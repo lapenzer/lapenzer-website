@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { NetworkDiagram } from "@/components/NetworkDiagram";
 import { ProcessDiagram } from "@/components/ProcessDiagram";
+import { ScrollShowcase } from "@/components/ScrollShowcase";
 import { SectionHeading } from "@/components/SectionHeading";
 
 const capabilities = [
@@ -34,6 +35,8 @@ export default function HomePage() {
           <div><span>04</span><strong>Systems</strong></div>
         </div>
       </section>
+
+      <ScrollShowcase />
 
       <section className="section shell split-section">
         <SectionHeading eyebrow="What we do" title="Build software for complex, data-heavy problems." />
