@@ -1,0 +1,2 @@
+import { SalesForm } from "@/components/SalesForm";
+export default function Sales(){return <><section className="page-hero shell"><p className="eyebrow">Contact</p><h1 className="display-small" style={{maxWidth:900,margin:'18px 0 0'}}>Talk to Sales</h1><p className="lede">Tell us what you&apos;re building and where Lapenzer can help.</p></section><section className="section shell"><SalesForm/></section></>}

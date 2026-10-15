@@ -1,0 +1,5 @@
+import Image from "next/image";
+import Link from "next/link";
+import { MotionIn } from "@/components/MotionIn";
+const HERO="https://images.unsplash.com/photo-1757997623209-5b322a3854f0?auto=format&fit=crop&fm=jpg&q=82&w=3000";
+export function Hero(){return <section className="hero"><div className="hero-image"><Image src={HERO} alt="Aerial view of urban transportation infrastructure" fill priority sizes="100vw"/></div><div className="hero-shade"/><div className="shell hero-grid"><h1 className="hero-brand">LAPENZER</h1><div className="hero-bottom"><MotionIn delay={.08}><p className="eyebrow">Prediction / Models / Systems</p><h2 className="hero-headline">Build systems that understand what happens next.</h2></MotionIn><MotionIn delay={.16} className="hero-copy"><p>Models and software for prediction, analysis, and complex data.</p><div className="btn-row"><Link className="btn btn-light" href="/capabilities">Explore capabilities</Link><Link className="btn btn-ghost" href="/models">Explore models</Link></div></MotionIn></div></div></section>}

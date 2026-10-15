@@ -1,0 +1,2 @@
+import Link from "next/link";
+export function DocsShell({children}:{children:React.ReactNode}){return <div className="shell docs-layout"><aside className="docs-nav"><p className="eyebrow" style={{marginBottom:18}}>Developers</p><Link href="/developers/docs">Documentation</Link><Link href="/models">Models</Link><Link href="/developers/api">API</Link><Link href="/developers/local">Local</Link><Link href="/developers/examples">Examples</Link></aside><main className="docs-main">{children}</main></div>}

@@ -1,19 +1,7 @@
 node_modules
 .next
 out
-dist
-*.log
-.env
-.env.*
+.env*
 !.env.example
 .DS_Store
-coverage
-
-# Local environment
-.env
-.env.local
-.env.*.local
-
-# OS/editor
-.DS_Store
-*.swp
+npm-debug.log*

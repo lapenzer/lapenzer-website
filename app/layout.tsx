@@ -1,53 +1,6 @@
 import type { Metadata } from "next";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
-import "./brand-refresh.css";
-
-export const metadata: Metadata = {
-  metadataBase: new URL("https://lapenzer.com"),
-  title: {
-    default: "Lapenzer — Software, Modelling, Data, Systems",
-    template: "%s — Lapenzer",
-  },
-  description:
-    "Lapenzer builds software, models, and analytical tools for forecasting, simulation, network analysis, and data-intensive systems.",
-  applicationName: "Lapenzer",
-  keywords: [
-    "Lapenzer",
-    "software development",
-    "mathematical modelling",
-    "forecasting",
-    "simulation",
-    "network analysis",
-    "data analysis",
-  ],
-  authors: [{ name: "Lapenzer" }],
-  creator: "Lapenzer",
-  publisher: "Lapenzer",
-  openGraph: {
-    title: "Lapenzer",
-    description: "Software for prediction, simulation, and data-intensive systems.",
-    url: "https://lapenzer.com",
-    siteName: "Lapenzer",
-    type: "website",
-  },
-  twitter: {
-    card: "summary",
-    title: "Lapenzer",
-    description: "Software for prediction, simulation, and data-intensive systems.",
-  },
-};
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="en">
-      <body>
-        <a className="skip-link" href="#main">Skip to content</a>
-        <SiteHeader />
-        <main id="main">{children}</main>
-        <SiteFooter />
-      </body>
-    </html>
-  );
-}
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+export const metadata:Metadata={metadataBase:new URL('https://lapenzer.com'),title:{default:'Lapenzer — Models, software, and systems',template:'%s — Lapenzer'},description:'Lapenzer builds models, software, and infrastructure for prediction, analysis, simulation, and complex data.',openGraph:{title:'Lapenzer',description:'Models and software for prediction, analysis, and complex data.',url:'https://lapenzer.com',siteName:'Lapenzer',type:'website'},twitter:{card:'summary_large_image',title:'Lapenzer',description:'Models and software for prediction, analysis, and complex data.'}};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><a className="skip-link" href="#main">Skip to content</a><Header/><main id="main">{children}</main><Footer/></body></html>}

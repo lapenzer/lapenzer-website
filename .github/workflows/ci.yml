@@ -1,22 +1,24 @@
 name: Build
-
 on:
   push:
+    branches: [main]
   pull_request:
-
+    branches: [main]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Lint
-        run: npm run lint
-      - name: Build
-        run: npm run build
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+      - name: Test UZUSKE download
+        run: |
+          python -m zipfile -e public/downloads/uzuske-1.0.zip /tmp/uzuske
+          cd /tmp/uzuske/uzuske-1.0
+          python uzuske.py version
+          python uzuske.py run examples/network.json --json | python -m json.tool >/dev/null
