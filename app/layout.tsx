@@ -2,23 +2,24 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
+import "./brand-refresh.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://lapenzer.com"),
   title: {
-    default: "Lapenzer — Software, Research, Mathematical Models, Technical Systems",
+    default: "Lapenzer — Software, Modelling, Data, Systems",
     template: "%s — Lapenzer",
   },
   description:
-    "Lapenzer develops software and research projects for prediction, forecasting, simulation, networks, data, and complex systems.",
+    "Lapenzer builds software, models, and analytical tools for forecasting, simulation, network analysis, and data-intensive systems.",
   applicationName: "Lapenzer",
   keywords: [
     "Lapenzer",
+    "software development",
     "mathematical modelling",
     "forecasting",
     "simulation",
     "network analysis",
-    "software research",
     "data analysis",
   ],
   authors: [{ name: "Lapenzer" }],
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
   publisher: "Lapenzer",
   openGraph: {
     title: "Lapenzer",
-    description: "Software, research, mathematical models, and technical systems.",
+    description: "Software for prediction, simulation, and data-intensive systems.",
     url: "https://lapenzer.com",
     siteName: "Lapenzer",
     type: "website",
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "Lapenzer",
-    description: "Software, research, mathematical models, and technical systems.",
+    description: "Software for prediction, simulation, and data-intensive systems.",
   },
 };
 
