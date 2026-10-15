@@ -1,0 +1,106 @@
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.wordmark {
+  font-weight: 600;
+  letter-spacing: .12em;
+  font-size: .88rem;
+}
+
+.hero {
+  min-height: 700px;
+  padding-top: 108px;
+  padding-bottom: 58px;
+}
+
+.hero-kicker,
+.eyebrow {
+  font-weight: 600;
+  letter-spacing: .11em;
+}
+
+.hero h1 {
+  margin-top: 20px;
+  font-size: clamp(4.6rem, 12vw, 9.6rem);
+  font-weight: 500;
+  line-height: .9;
+  letter-spacing: -.055em;
+}
+
+.hero-subtitle {
+  max-width: 800px;
+  margin-top: 34px;
+  font-size: clamp(1.75rem, 3.2vw, 3rem);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -.04em;
+}
+
+.hero-copy {
+  max-width: 650px;
+  margin-top: 24px;
+  color: #aeb6c0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.button {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.hero-metrics strong,
+.section-link,
+.text-link,
+.future-block a {
+  font-weight: 600;
+}
+
+.section-heading h2,
+.future-block h2,
+.detail-section h2,
+.project-feature-header h2,
+.page-header h1,
+.project-list-card h2,
+.project-detail-header h1 {
+  font-weight: 500;
+}
+
+.capability-card {
+  background: rgba(255, 255, 255, .008);
+}
+
+.capability-card h3,
+.project-facts dt,
+.process-step h3,
+.status-panel strong {
+  font-weight: 600;
+}
+
+.prose-large {
+  color: #bbc2ca;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+}
+
+.project-lead {
+  font-weight: 400;
+}
+
+@media (max-width: 720px) {
+  .hero {
+    min-height: auto;
+    padding-top: 86px;
+  }
+
+  .hero h1 {
+    font-size: clamp(3.7rem, 18vw, 6.2rem);
+    letter-spacing: -.05em;
+  }
+
+  .hero-subtitle {
+    font-size: clamp(1.65rem, 8vw, 2.35rem);
+  }
+}
