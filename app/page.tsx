@@ -4,54 +4,52 @@ import { ProcessDiagram } from "@/components/ProcessDiagram";
 import { SectionHeading } from "@/components/SectionHeading";
 
 const capabilities = [
-  ["Software", "Web applications, technical interfaces, research software, data-processing pipelines, simulation tools, and software for testing models against historical or synthetic data."],
-  ["Mathematical modelling", "Models represent systems with variables, constraints, probabilities, relationships, and objectives. Current methods include graphs, optimization, Markov models, Monte Carlo simulation, regression, and scenario analysis."],
-  ["Data analysis", "Data is cleaned, explored, compared, visualized, and tested so assumptions and model performance can be measured rather than implied."],
-  ["Simulation", "Systems are run under changing inputs, constraints, probabilities, resource levels, network states, and alternative assumptions to measure how outcomes change."],
-  ["Forecasting", "Possible future outcomes are estimated from historical information, current conditions, mathematical models, and uncertainty. Forecasts are expressed as probabilities rather than certainty."],
+  ["Software", "Web applications, technical interfaces, data pipelines, simulation tools, and custom software built around real operational needs."],
+  ["Mathematical modelling", "Forecasting, optimization, graph models, probability, regression, Monte Carlo methods, and scenario analysis."],
+  ["Data analysis", "Data cleaning, exploration, visualization, statistical analysis, model evaluation, and performance measurement."],
+  ["Simulation", "Software for testing systems under changing conditions, constraints, network states, and resource levels."],
+  ["Forecasting", "Models that estimate likely future outcomes from historical data, current conditions, and uncertainty."],
 ] as const;
 
 export default function HomePage() {
   return (
     <>
       <section className="hero shell">
-        <div className="hero-kicker"><span className="status-dot" /> Independent technical company</div>
+        <div className="hero-kicker">Software / Models / Data</div>
         <h1>LAPENZER</h1>
-        <p className="hero-subtitle">Software, research, mathematical models, and technical systems.</p>
+        <p className="hero-subtitle">Software for prediction, simulation, and data-intensive systems.</p>
         <p className="hero-copy">
-          Lapenzer develops software and research projects for problems involving prediction, forecasting, simulation,
-          networks, data, and complex systems. Projects are built around clearly defined problems and documented with
-          their methods, assumptions, results, and limitations.
+          Lapenzer builds software, models, and analytical tools for forecasting, network analysis, simulation,
+          and decision support.
         </p>
         <div className="button-row">
-          <Link className="button button-primary" href="/projects">Explore projects</Link>
-          <Link className="button button-secondary" href="/research">View research</Link>
+          <Link className="button button-primary" href="/projects">View projects</Link>
+          <Link className="button button-secondary" href="/research">Research</Link>
         </div>
         <div className="hero-rule" />
         <div className="hero-metrics" aria-label="Company focus areas">
           <div><span>01</span><strong>Software</strong></div>
-          <div><span>02</span><strong>Models</strong></div>
-          <div><span>03</span><strong>Research</strong></div>
+          <div><span>02</span><strong>Modelling</strong></div>
+          <div><span>03</span><strong>Data</strong></div>
           <div><span>04</span><strong>Systems</strong></div>
         </div>
       </section>
 
       <section className="section shell split-section">
-        <SectionHeading eyebrow="Mission" title="Turn difficult problems into models, software, and measurable results." />
+        <SectionHeading eyebrow="What we do" title="Build software for complex, data-heavy problems." />
         <div className="prose-large">
           <p>
-            The company focuses on problems that can be represented mathematically or computationally: predicting
-            possible routes, estimating future outcomes, simulating alternative scenarios, studying networks, and
-            analysing structured data.
+            We work on forecasting, simulation, route and network analysis, data processing, and software that turns
+            mathematical models into usable tools.
           </p>
           <p>
-            Each project should make its assumptions visible and provide a clear explanation of how its output was produced.
+            Projects can range from research prototypes to deployable applications and technical systems.
           </p>
         </div>
       </section>
 
       <section className="section shell">
-        <SectionHeading eyebrow="Capabilities" title="What Lapenzer builds" description="Technical language is used where it improves precision; the implementation behind the term remains visible." />
+        <SectionHeading eyebrow="Capabilities" title="Engineering and analysis" description="Software development, mathematical modelling, simulation, forecasting, and data analysis." />
         <div className="capability-grid">
           {capabilities.map(([title, text], index) => (
             <article className="capability-card" key={title}>
@@ -61,30 +59,29 @@ export default function HomePage() {
             </article>
           ))}
         </div>
-        <div className="section-link"><Link href="/capabilities">Detailed capabilities →</Link></div>
+        <div className="section-link"><Link href="/capabilities">See capabilities →</Link></div>
       </section>
 
       <section className="section shell project-feature">
         <div className="project-feature-header">
           <div>
-            <p className="eyebrow">Project 01</p>
+            <p className="eyebrow">Featured project</p>
             <h2>Quantified Systems</h2>
           </div>
           <div className="project-tags">
-            <span>Research</span><span>Software</span><span>Mathematical modelling</span>
+            <span>Prediction</span><span>Simulation</span><span>Network analysis</span>
           </div>
         </div>
         <div className="project-feature-grid">
           <div>
             <p className="project-lead">
-              A research and software project focused on route prediction, forecasting, simulation, network analysis,
-              and applied mathematical modelling.
+              A software and modelling project for route prediction, forecasting, simulation, and network analysis.
             </p>
             <dl className="project-facts">
-              <div><dt>Route prediction</dt><dd>Weighted graphs, candidate route generation, transition probabilities, contextual scoring, and ranking.</dd></div>
-              <div><dt>Forecasting</dt><dd>Probability distributions over possible outcomes with assumptions and uncertainty exposed.</dd></div>
-              <div><dt>Simulation</dt><dd>Repeated model runs under changed assumptions or random conditions, including Monte Carlo methods.</dd></div>
-              <div><dt>Network analysis</dt><dd>Connected systems represented as nodes and relationships to study routes, dependencies, bottlenecks, and failure points.</dd></div>
+              <div><dt>Route prediction</dt><dd>Generate and rank possible routes using graph structure, historical movement, and contextual information.</dd></div>
+              <div><dt>Forecasting</dt><dd>Estimate likely outcomes and compare competing scenarios.</dd></div>
+              <div><dt>Simulation</dt><dd>Run repeated scenarios under changing assumptions and conditions.</dd></div>
+              <div><dt>Network analysis</dt><dd>Map connected systems, dependencies, paths, bottlenecks, and failure points.</dd></div>
             </dl>
             <div className="button-row">
               <Link className="button button-primary" href="/projects/quantified-systems">View project</Link>
@@ -96,14 +93,14 @@ export default function HomePage() {
       </section>
 
       <section className="section shell">
-        <SectionHeading eyebrow="Technical approach" title="A six-stage development process" description="The process is designed to keep assumptions, implementation, validation, and limitations connected." />
+        <SectionHeading eyebrow="How we build" title="From model to working software" description="Define the system, build the model, implement it, test it, measure performance, and ship the result." />
         <ProcessDiagram />
       </section>
 
       <section className="section shell future-block">
-        <p className="eyebrow">More projects</p>
-        <h2>Additional Lapenzer projects will be published as they move from research into working prototypes or software.</h2>
-        <Link href="/projects">Project archive →</Link>
+        <p className="eyebrow">Projects</p>
+        <h2>New software and research projects will be added as they are developed.</h2>
+        <Link href="/projects">View all →</Link>
       </section>
     </>
   );
