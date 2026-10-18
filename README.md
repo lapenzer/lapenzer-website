@@ -2,6 +2,8 @@
 
 Production website for Lapenzer.
 
+Production hosting: Cloudflare Workers.
+
 ## Local development
 
 ```bash
