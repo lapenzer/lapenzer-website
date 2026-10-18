@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1170 1022" role="img" aria-labelledby="title desc">
+  <title id="title">Lapenzer logo</title>
+  <desc id="desc">Abstract circular mark with cyan, orange, magenta, lime, and white geometric elements on black.</desc>
+  <rect width="1170" height="1022" fill="#000000"/>
+  <circle cx="576" cy="503" r="432" fill="none" stroke="#58a3a8" stroke-width="5"/>
+  <line x1="144" y1="502" x2="1008" y2="502" stroke="#9eae58" stroke-width="5"/>
+  <circle cx="425" cy="320" r="82" fill="none" stroke="#c38a50" stroke-width="5"/>
+  <circle cx="425" cy="320" r="11" fill="#59a6aa"/>
+  <circle cx="730" cy="320" r="82" fill="none" stroke="#aa61a5" stroke-width="5"/>
+  <circle cx="730" cy="320" r="11" fill="#9dac58"/>
+  <path d="M450 914 Q577 -150 705 914" fill="none" stroke="#c58b50" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="577" cy="382" r="11" fill="#e8e7e5"/>
+</svg>
