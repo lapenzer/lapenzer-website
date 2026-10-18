@@ -1,5 +1,5 @@
 import Link from "next/link";
-export function Footer(){return <footer className="footer"><div className="shell"><div className="footer-brand">LAPENZER</div><div className="footer-grid">
+export function Footer(){return <footer className="footer"><div className="shell"><div className="footer-brand" style={{display:"flex",alignItems:"center",gap:14}}><img src="/lapenzer-logo.svg" alt="" aria-hidden="true" width="56" height="49" style={{display:"block",width:56,height:49,objectFit:"contain",borderRadius:3}}/><span>LAPENZER</span></div><div className="footer-grid">
 <div><p style={{maxWidth:360,color:"#8a929b",lineHeight:1.6}}>Models, software, and infrastructure for prediction, analysis, and complex data.</p></div>
 <div className="footer-col"><h4>Company</h4><Link href="/company">About</Link><Link href="/research">Research</Link><Link href="/contact/sales">Contact</Link></div>
 <div className="footer-col"><h4>Product</h4><Link href="/models">Models</Link><Link href="/capabilities">Capabilities</Link><Link href="/developers/docs">Developers</Link><Link href="/models/local">Local</Link></div>
