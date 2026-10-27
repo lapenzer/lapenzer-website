@@ -1,0 +1,9 @@
+import Link from "next/link";
+import { GraphScene, InfluenceScene, ConflictScene } from "@/components/GraphScene";
+import { scenario } from "@/lib/conflict";
+const areas = [
+  { slug: "route-prediction", name: "Route prediction", question: "Where could movement go next?", copy: "Generate feasible paths. Learn from transitions. Compare the most likely alternatives as observations change.", status: "Local evaluation build", method: "Graphs · beam search · transition history" },
+  { slug: "network-influence", name: "Network influence", question: "How do signals change a system?", copy: "Study aggregate communities, narratives, and events through reliability, historical change, and network exposure.", status: "Research framework", method: "Dynamic graphs · logistic models · uncertainty" },
+  { slug: "conflict-simulation", name: "Conflict-state simulation", question: "How might a situation evolve?", copy: "Connect conditional state transitions, continuous dynamics, and sampled futures to inspect strategic scenarios.", status: "Research framework", method: "Markov models · Lanchester dynamics · Monte Carlo" },
+];
+export function TechnologyIndex() { return <div className="technology-index">{areas.map((area, i) => <Link className="technology-row" key={area.slug} href={`/technology/${area.slug}`}><span className="index-number">0{i + 1}</span><div className="technology-name"><span className="status"><i />{area.status}</span><h3>{area.name}</h3><span className="method-label">{area.method}</span></div><div className="technology-summary"><h4>{area.question}</h4><p>{area.copy}</p><span className="text-link small">Explore the technology <span aria-hidden="true">↗</span></span></div><div className="technology-preview" aria-hidden="true">{i === 0 ? <GraphScene /> : i === 1 ? <InfluenceScene /> : <ConflictScene distributions={scenario(.35, false, 64, 4).distributions[4]} />}</div></Link>)}</div>; }

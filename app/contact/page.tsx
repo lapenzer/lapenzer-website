@@ -1,1 +1,4 @@
-import { redirect } from "next/navigation";export default function Contact(){redirect('/contact/sales')}
+import type { Metadata } from "next";
+import { SalesForm } from "@/components/SalesForm";
+export const metadata: Metadata = { title: "Discuss a project", description: "Contact LAPENZER about movement prediction, network analysis, simulation, data integration, and research software." };
+export default function Contact() { return <><section className="page-hero shell"><p className="eyebrow">Contact</p><h1 className="display-small">Start with<br />the question.</h1><p className="lede">Tell us about the system, the observations available, and what you want to understand. Include a timeline or technical constraint if it matters.</p></section><section className="contact-section shell two-col"><div><p className="eyebrow">A direct conversation</p><a className="text-link" href="mailto:contact@lapenzer.com">contact@lapenzer.com ↗</a><p className="reading-copy">Ontario, Canada</p></div><SalesForm /></section></>; }
