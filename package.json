@@ -4,8 +4,10 @@
   "private": true,
   "engines": {"node": ">=22.0.0"},
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.mjs",
     "build": "next build",
+    "build:preview": "node scripts/build-preview.mjs",
+    "check:models": "node scripts/check-models.mjs",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint ."
   },

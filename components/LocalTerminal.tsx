@@ -1,4 +1,21 @@
 "use client";
-import { useEffect,useRef,useState } from "react";
-const full=`$ python uzuske.py run examples/network.json\n\nUZUSKE 1.0.0\nInput network: network.json\nObservations: 4\n\nCalculating candidate routes...\n\n1   A -> C -> F -> J -> N        36.29%\n2   A -> D -> G -> K -> N        24.84%\n3   A -> B -> E -> H -> N        21.39%\n4   A -> D -> G -> L -> N        17.47%\n\nPrediction complete.`;
-export function LocalTerminal(){const ref=useRef<HTMLDivElement>(null);const[text,setText]=useState('');useEffect(()=>{const el=ref.current;if(!el)return;let timer:ReturnType<typeof setInterval>|null=null;const obs=new IntersectionObserver(([entry])=>{if(entry.isIntersecting&&text===''){let i=0;timer=setInterval(()=>{i+=3;setText(full.slice(0,i));if(i>=full.length&&timer)clearInterval(timer)},18);obs.disconnect()}},{threshold:.35});obs.observe(el);return()=>{obs.disconnect();if(timer)clearInterval(timer)}},[text]);return <div ref={ref} className="terminal"><div className="terminal-bar"><span>UZUSKE / LOCAL</span><span>Python 3.10+</span></div><pre className="terminal-body">{text}<span aria-hidden="true">▋</span></pre></div>}
+import { useEffect, useRef, useState } from "react";
+import { useMedia } from "@/lib/use-media";
+import { terminalOutput } from "@/lib/route";
+export function LocalTerminal() {
+  const root = useRef<HTMLDivElement>(null);
+  const [started, setStarted] = useState(false), [length, setLength] = useState(0), [complete, setComplete] = useState(false);
+  const reduced = useMedia("(prefers-reduced-motion: reduce)");
+  useEffect(() => {
+    if (!root.current) return;
+    const observer = new IntersectionObserver(entries => { if (entries.some(e => e.isIntersecting)) { setStarted(true); observer.disconnect(); } }, { threshold: .2 });
+    observer.observe(root.current); return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!started || reduced || complete) return;
+    let count = 0;
+    const interval = window.setInterval(() => { count = Math.min(terminalOutput.length, count + 9); setLength(count); if (count === terminalOutput.length) window.clearInterval(interval); }, 18);
+    return () => window.clearInterval(interval);
+  }, [started, reduced, complete]);
+  return <div className="terminal" ref={root}><div className="terminal-bar"><span><i aria-hidden="true" />LOCAL EVALUATION / UZUSKE 1.0.0</span><button type="button" onClick={() => setComplete(true)}>Show full output ↗</button></div><pre className="terminal-body" aria-hidden="true">{reduced || complete ? terminalOutput : terminalOutput.slice(0, length)}<span className="terminal-cursor">▌</span></pre><pre className="sr-only">{terminalOutput}</pre><noscript><pre className="terminal-body">{terminalOutput}</pre></noscript></div>;
+}

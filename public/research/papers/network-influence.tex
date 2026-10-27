@@ -1,0 +1,264 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\setstretch{1.08}
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.25em}
+\newtheorem{proposition}{Proposition}
+\newcommand{\R}{\mathbb{R}}
+\title{\textbf{Aggregate Radicalization Influence Dynamics on Narrative--Community Graphs}\\\large A Theoretical Framework for Probabilistic Early Warning}
+\author{Krish Parikh (Lapenzer)\\Independent Researcher, Ontario, Canada\\\texttt{lapenzerparikh@gmail.com}}
+\date{Preprint -- not peer reviewed\\Copyright \textcopyright\ 2026 Krish Parikh. All rights reserved.}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper develops a theoretical framework for modelling changes in aggregate radicalization-related risk across communities, regions, and narrative ecosystems without assigning threat labels to individuals. The proposed Radicalization Influence Dynamics framework represents communities, regions, narratives, and relevant events as a time-varying weighted graph. Observed information is transformed into aggregate variables describing grievance intensity, narrative growth, recruitment-pattern indicators, network concentration, exposure to destabilizing violence, and departures from historical baselines. These variables enter a probabilistic risk model containing local, temporal, and network-diffusion components. Historical baselines, time-series change, diffusion, and change-point models are combined through an uncertainty-aware ensemble rather than interpreted as deterministic evidence of radicalization. The framework further incorporates source reliability, entropy-based uncertainty, disagreement-based abstention, and analyst review. Several elementary mathematical properties are established, including probability boundedness, convexity of the ensemble forecast, and sensitivity of risk estimates to network exposure. The architecture synthesizes established ideas from threshold models, opinion dynamics, point processes, social-network analysis, and probabilistic classification while treating their integration into an aggregate early-warning architecture as the principal contribution. No empirical accuracy, causal validity, operational deployment, or predictive performance is claimed. The framework is intended as a basis for subsequent theoretical analysis and carefully governed empirical evaluation.
+\end{abstract}
+
+\noindent\textbf{Keywords:} radicalization modelling; network diffusion; probabilistic forecasting; early warning; social networks; uncertainty; change-point detection
+
+\section{Introduction}
+Radicalization is not naturally represented by a single observable variable. It is a heterogeneous process associated with social relationships, grievances, narrative environments, political and economic circumstances, exposure to violence, recruitment activity, and temporal change. Treating it as a binary classification problem is therefore mathematically restrictive and can create serious interpretive problems.
+
+The present paper proposes an alternative formulation. Rather than asking whether an individual is or is not radicalized, the framework asks whether measurable aggregate conditions associated with escalation are changing within a community, group, region, or narrative environment. The unit of analysis is therefore deliberately aggregate.
+
+The framework has four principal objectives: (i) represent interacting communities, regions, narratives, and events as a dynamic graph; (ii) estimate time-dependent aggregate escalation probabilities; (iii) propagate influence through the graph without assuming that exposure mechanically causes radicalization; and (iv) quantify uncertainty sufficiently to permit abstention when evidence is inadequate.
+
+Threshold models of collective behaviour, consensus and social-influence models, self-exciting point processes, and empirical studies of extremist propaganda and online radicalization provide relevant mathematical and empirical foundations \citep{granovetter1978,degroot1974,hawkes1971,ferrara2017,conway2017,youngblood2020}. The present model does not claim invention of those underlying methods. Its proposed contribution is a unified probabilistic architecture combining source reliability, graph diffusion, temporal change, multiple risk channels, uncertainty calibration, and explicit abstention.
+
+\section{Related Work}
+Granovetter's threshold model provides a canonical mathematical account of collective behaviour in which participation can depend on the proportion of other actors already participating \citep{granovetter1978}. DeGroot's consensus model provides an influential linear framework for repeated social influence \citep{degroot1974}, while Hawkes processes provide a mathematical representation of self-exciting and mutually exciting event sequences \citep{hawkes1971}.
+
+These models establish useful mathematical concepts but are not themselves models of radicalization. More directly relevant empirical work has studied extremist communication and online diffusion. Ferrara analysed diffusion patterns in extremist propaganda on social networks \citep{ferrara2017}. Youngblood reported patterns consistent with complex contagion in a specific dataset of far-right radicalization cases in the United States \citep{youngblood2020}. Conway emphasized that the relationship between the Internet and violent extremism requires careful empirical investigation rather than simple causal assumptions \citep{conway2017}.
+
+These findings motivate graph and diffusion components while simultaneously cautioning against interpreting online exposure as sufficient evidence of radicalization. The present framework consequently treats network exposure as one probabilistic covariate among several.
+
+\section{Scope and Unit of Analysis}
+Let
+\begin{equation}
+\mathcal{G}_t=(V_t,E_t,W_t)
+\end{equation}
+denote a dynamic directed weighted graph at time $t$. The vertex set is partitioned into
+\begin{equation}
+V_t=V_C\cup V_R\cup V_N\cup V_E,
+\end{equation}
+where $V_C$ represents aggregate communities or groups, $V_R$ geographic regions, $V_N$ narratives or themes, and $V_E$ relevant observed events. No vertex is required to represent an identifiable person.
+
+An edge $e_{ij,t}\in E_t$ indicates an analytically relevant relationship between vertices $i$ and $j$. Depending on vertex types, an edge may represent narrative diffusion, geographic adjacency, aggregate communication, temporal association, or another explicitly defined relationship. The corresponding non-negative weight is $w_{ij,t}\geq0$.
+
+For influence calculations, outgoing weights may be normalized as
+\begin{equation}
+\widetilde w_{ij,t}=\frac{w_{ij,t}}{\sum_k w_{ik,t}+\epsilon},
+\label{eq:norm-weight}
+\end{equation}
+where $\epsilon>0$ prevents division by zero.
+
+\section{Source Reliability}
+Suppose the system observes reports
+\begin{equation}
+\mathcal{D}_t=\{d_1,\ldots,d_m\}.
+\end{equation}
+Each observation $d_k$ receives a reliability coefficient $r_k\in[0,1]$. Reliability is conceptually distinct from whether the reported event is favourable or unfavourable. A report may indicate escalation while still receiving a low reliability score.
+
+For feature $x_j$, a reliability-weighted aggregate can be defined as
+\begin{equation}
+\widehat x_{j,t}=\frac{\sum_{k=1}^{m}r_kx_{jk}}{\sum_{k=1}^{m}r_k+\epsilon}.
+\label{eq:reliability}
+\end{equation}
+This formulation ensures that weakly supported reports do not receive the same weight as strongly supported observations. Personally identifying information should be removed whenever unnecessary for the aggregate analytical objective.
+
+\section{State Variables}
+For each aggregate analytical unit $i$, define
+\begin{equation}
+\mathbf{x}_{i,t}=
+\begin{bmatrix}
+ g_{i,t} & n_{i,t} & q_{i,t} & c_{i,t} & v_{i,t} & b_{i,t}
+\end{bmatrix}^{\top}.
+\end{equation}
+The components represent, respectively, grievance or polarization intensity, narrative growth or diffusion, an aggregate recruitment-pattern indicator, network concentration or structural change, exposure to destabilizing violence, and historical-baseline deviation.
+
+These quantities are latent modelling constructs until an empirical measurement procedure is specified. Their inclusion in the theory does not imply that they can be measured perfectly.
+
+\section{Historical Baseline and Temporal Change}
+Let $x_{i,t}^{(k)}$ denote feature $k$ for unit $i$. Given a historical reference window $H_t$, define
+\begin{equation}
+\mu_{i,t}^{(k)}=\frac{1}{|H_t|}\sum_{\tau\in H_t}x_{i,\tau}^{(k)},
+\end{equation}
+and let $\sigma_{i,t}^{(k)}$ denote the corresponding standard deviation. A standardized deviation is
+\begin{equation}
+z_{i,t}^{(k)}=\frac{x_{i,t}^{(k)}-\mu_{i,t}^{(k)}}{\sigma_{i,t}^{(k)}+\epsilon}.
+\end{equation}
+This distinguishes a high absolute value from an unusual change relative to the unit's own historical behaviour.
+
+Define first and second differences by
+\begin{equation}
+\Delta \mathbf{x}_{i,t}=\mathbf{x}_{i,t}-\mathbf{x}_{i,t-1},
+\qquad
+\Delta^2\mathbf{x}_{i,t}=\Delta\mathbf{x}_{i,t}-\Delta\mathbf{x}_{i,t-1}.
+\end{equation}
+Thus a unit whose indicators remain high but stable is mathematically distinguishable from one undergoing rapid escalation.
+
+A generic change-point statistic is
+\begin{equation}
+C_{i,t}=\left\|\mathbf{x}_{i,t}-\boldsymbol{\mu}_{i,t}\right\|_{\Sigma^{-1}},
+\end{equation}
+where $\boldsymbol{\mu}_{i,t}$ is the historical mean and $\Sigma$ an estimated covariance matrix. Large $C_{i,t}$ indicates departure from historical behaviour; it does not establish why that departure occurred.
+
+\section{Network Influence}
+Let $A_t=[\widetilde w_{ij,t}]$ be the normalized influence matrix. For scalar risk-related quantity $y_{j,t}$, define network exposure
+\begin{equation}
+I_{i,t}=\sum_{j\neq i}\widetilde w_{ji,t}y_{j,t}.
+\label{eq:network-exposure}
+\end{equation}
+For a vector-valued state,
+\begin{equation}
+\mathbf{I}_t=A_t^{\top}\mathbf{X}_t.
+\end{equation}
+A simple dynamic influence model is
+\begin{equation}
+\mathbf{y}_{t+1}=\sigma\left(B\mathbf{y}_t+\Gamma A_t^{\top}\mathbf{y}_t+D\mathbf{x}_t\right),
+\end{equation}
+where $\sigma(\cdot)$ is applied componentwise.
+
+This expression should not be interpreted as a causal statement that neighbouring risk causes local radicalization. The network term encodes statistical dependence that must be evaluated empirically.
+
+\section{Probabilistic Aggregate Risk}
+Define a latent score
+\begin{equation}
+\eta_{i,t}=\beta_0+\boldsymbol{\beta}^{\top}\mathbf{x}_{i,t}+\boldsymbol{\delta}^{\top}\Delta\mathbf{x}_{i,t}+\gamma I_{i,t}+\kappa C_{i,t}.
+\end{equation}
+The corresponding aggregate escalation probability is
+\begin{equation}
+p_{i,t}=\frac{1}{1+\exp(-\eta_{i,t})}.
+\label{eq:logit-risk}
+\end{equation}
+The interpretation is
+\begin{equation}
+p_{i,t}=P(Y_{i,t+1}=1\mid\mathcal{F}_t),
+\end{equation}
+where $Y_{i,t+1}=1$ denotes a precisely defined aggregate escalation event and $\mathcal{F}_t$ contains information available at time $t$.
+
+\begin{proposition}[Probability boundedness]
+For every finite $\eta_{i,t}$, $0<p_{i,t}<1$.
+\end{proposition}
+\begin{proof}
+Because $\exp(-\eta_{i,t})>0$, the denominator in \cref{eq:logit-risk} is greater than one. The logistic transformation therefore lies strictly between zero and one.
+\end{proof}
+
+\section{Ensemble Architecture}
+Suppose $M$ component models produce $p_{i,t}^{(1)},\ldots,p_{i,t}^{(M)}$. Possible components include historical baseline, temporal trend, network diffusion, change-point, event-intensity, and contextual probabilistic models. Let
+\begin{equation}
+\lambda_m\geq0,\qquad \sum_{m=1}^{M}\lambda_m=1.
+\end{equation}
+Define the combined probability
+\begin{equation}
+\widehat p_{i,t}=\sum_{m=1}^{M}\lambda_m p_{i,t}^{(m)}.
+\label{eq:ensemble}
+\end{equation}
+
+\begin{proposition}[Convex probability preservation]
+If $p_{i,t}^{(m)}\in[0,1]$ for all $m$, then $\widehat p_{i,t}\in[0,1]$.
+\end{proposition}
+\begin{proof}
+Equation \cref{eq:ensemble} is a convex combination of values contained in the closed interval $[0,1]$. Convexity of that interval gives the result.
+\end{proof}
+
+This proposition establishes probability validity only. It does not establish calibration or predictive accuracy.
+
+\section{Uncertainty and Abstention}
+For a binary event with probability $p$, predictive entropy is
+\begin{equation}
+H(p)=-p\log p-(1-p)\log(1-p).
+\end{equation}
+Entropy is highest near $p=1/2$. Model disagreement can be represented by
+\begin{equation}
+D_{i,t}=\sum_{m=1}^{M}\lambda_m\left(p_{i,t}^{(m)}-\widehat p_{i,t}\right)^2.
+\end{equation}
+A decision-support system may abstain when
+\begin{equation}
+H(\widehat p_{i,t})>\tau_H
+\quad\text{or}\quad
+D_{i,t}>\tau_D.
+\end{equation}
+Abstention is a mathematical feature of the model rather than a system failure.
+
+\section{Alternative Explanations}
+For a linear latent score
+\begin{equation}
+\eta_{i,t}=\beta_0+\sum_k\beta_kx_{ik,t},
+\end{equation}
+the direct contribution associated with variable $k$ is $\phi_{ik,t}=\beta_kx_{ik,t}$. The system should report influential variables while preserving plausible alternative hypotheses. Sudden narrative growth, for example, may reflect radicalizing mobilization, mainstream news coverage, counter-extremism discussion, academic attention, satire, reaction to an external event, or measurement artifacts. Text or network activity alone therefore cannot establish violent intent.
+
+\section{Abstract Algorithm}
+\begin{enumerate}[leftmargin=2em]
+\item Remove unnecessary personally identifying information.
+\item Assign source-reliability weights.
+\item Extract aggregate events, narratives, regions, and group-level indicators.
+\item Update the dynamic graph.
+\item Compute historical baselines.
+\item Compute temporal changes and change-point statistics.
+\item Compute network-exposure variables.
+\item Evaluate component probabilistic models.
+\item Form the convex ensemble probability.
+\item Calculate entropy and model disagreement.
+\item Abstain when uncertainty exceeds predefined thresholds.
+\item Return probability, uncertainty, contributing variables, and alternative explanations for human review.
+\end{enumerate}
+
+\section{Interpretation and Governance}
+The framework does not estimate whether a particular person is a terrorist, extremist, criminal, or future violent actor. Its valid output domain is narrower: aggregate change in modeled escalation risk. This distinction is essential because observed communication patterns and social relationships may be highly ambiguous.
+
+The model is therefore most appropriately interpreted as an early-warning and research framework rather than an automated adjudication mechanism. Any future operational use would require governance controls, auditability, bias evaluation, data-protection safeguards, and human review.
+
+\section{Validation Requirements}
+No empirical validation is presented in this paper. A future evaluation would require, at minimum, temporally separated training and testing, explicit definitions of predicted events, calibration analysis, comparison against simple baselines, ablation testing, sensitivity to source reliability, geographic and temporal robustness testing, false-positive analysis, and evaluation for systematic bias.
+
+Accuracy alone would be insufficient. For probabilistic forecasts, the Brier score
+\begin{equation}
+\operatorname{Brier}=\frac{1}{N}\sum_{i=1}^{N}(p_i-y_i)^2
+\end{equation}
+provides one appropriate scoring rule.
+
+\section{Limitations}
+The framework has several fundamental limitations. Radicalization is a contested and multidimensional social construct. A numerical risk variable cannot capture its full sociological or psychological complexity. Correlation between network exposure and later escalation does not prove causal influence. Observational datasets may contain severe selection bias. Narrative extraction can misinterpret irony, quotation, multilingual discourse, or counter-speech. Historical labels may themselves encode institutional bias. Structural changes in platforms, conflicts, political institutions, or communication behaviour can generate distribution shift.
+
+Finally, a mathematical probability is conditional on the model and available evidence. It is not an objective probability existing independently of those assumptions.
+
+\section{Contribution}
+The proposed contribution is not logistic regression, threshold theory, network diffusion, change-point detection, or ensemble modelling individually. The contribution is the formal integration of
+\begin{equation}
+\begin{aligned}
+&\text{reliability}+\text{temporal change}+\text{network diffusion}\\
+&\qquad+\text{aggregate indicators}+\text{ensemble uncertainty}+\text{abstention}
+\end{aligned}
+\end{equation}
+within a single aggregate radicalization early-warning architecture. That contribution remains theoretical until tested empirically.
+
+\section{Conclusion}
+This paper introduced an aggregate graph-based framework for modelling changes in radicalization-related conditions without automatically assigning labels to individuals. The framework combines dynamic networks, historical baselines, temporal derivatives, diffusion variables, logistic probabilities, model ensembles, entropy, and abstention.
+
+Its central methodological principle is that radicalization-related information should be represented probabilistically and contextually rather than treated as deterministic evidence. The next research stage is empirical: precise variable operationalization, dataset construction, calibration, validation, robustness analysis, and comparison against simpler baselines.
+
+\section*{Statement on AI Assistance}
+OpenAI ChatGPT was used as an editorial, mathematical-formalization, and literature-organization assistant during preparation of this manuscript. The author retains responsibility for the research concepts, interpretation, verification, and final manuscript.
+
+\begin{thebibliography}{99}
+\bibitem{conway2017} Conway, M. (2017). Determining the role of the Internet in violent extremism and terrorism: Six suggestions for progressing research. \emph{Studies in Conflict \& Terrorism}, 40(1), 77--98. doi:10.1080/1057610X.2016.1157408.
+\bibitem{degroot1974} DeGroot, M. H. (1974). Reaching a consensus. \emph{Journal of the American Statistical Association}, 69(345), 118--121. doi:10.1080/01621459.1974.10480137.
+\bibitem{ferrara2017} Ferrara, E. (2017). Contagion dynamics of extremist propaganda in social networks. \emph{Information Sciences}, 418--419, 1--12. doi:10.1016/j.ins.2017.07.030.
+\bibitem{granovetter1978} Granovetter, M. (1978). Threshold models of collective behavior. \emph{American Journal of Sociology}, 83(6), 1420--1443. doi:10.1086/226707.
+\bibitem{hawkes1971} Hawkes, A. G. (1971). Spectra of some self-exciting and mutually exciting point processes. \emph{Biometrika}, 58(1), 83--90. doi:10.1093/biomet/58.1.83.
+\bibitem{youngblood2020} Youngblood, M. (2020). Extremist ideology as a complex contagion: The spread of far-right radicalization in the United States between 2005 and 2017. \emph{Humanities and Social Sciences Communications}, 7, 49. doi:10.1057/s41599-020-00546-3.
+\end{thebibliography}
+\end{document}

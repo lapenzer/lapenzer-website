@@ -1,3 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
-export function MotionIn({children,delay=0,className}:{children:React.ReactNode;delay?:number;className?:string}){return <motion.div className={className} initial={{opacity:0,y:18}} animate={{opacity:1,y:0}} transition={{duration:.75,delay,ease:[.22,1,.36,1]}}>{children}</motion.div>}
+import { useMedia } from "@/lib/use-media";
+export function MotionIn({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const reduced = useMedia("(prefers-reduced-motion: reduce)");
+  return <motion.div className={className} initial={false} whileInView={reduced ? undefined : { y: [18, 0] }} viewport={{ once: true, amount: .12 }} transition={{ duration: .75, delay, ease: [.22, 1, .36, 1] }}>{children}</motion.div>;
+}

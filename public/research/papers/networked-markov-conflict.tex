@@ -1,0 +1,267 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\setstretch{1.08}
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.25em}
+\newtheorem{proposition}{Proposition}
+\title{\textbf{Networked Markov--Monte Carlo Modelling of Cascading Urban Conflict-State Transitions}}
+\author{Krish Parikh (Lapenzer)\\Independent Researcher, Ontario, Canada\\\texttt{lapenzerparikh@gmail.com}}
+\date{Preprint -- not peer reviewed\\Copyright \textcopyright\ 2026 Krish Parikh. All rights reserved.}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper introduces a theoretical Markov--Monte Carlo framework for modelling the interdependent evolution of conflict states across a network of cities. Instead of assigning each city an independent probability of changing control, the proposed model represents cities as vertices in a weighted dynamic graph and allows the transition distribution of each city to depend on its current state, the current states of neighbouring cities, aggregate contextual covariates, and uncertainty in model parameters. The complete vector of city states forms a joint Markov process. Monte Carlo simulation is then used to propagate uncertainty across multiple future periods and estimate the distribution of possible conflict-state trajectories. A central feature is conditional cascade analysis: if City A has probability $p_A$ of changing control, the effect on City B is derived from the difference between the conditional transition probabilities of B under alternative states of A. Consequently, a 50\% probability that A changes control does not mechanically imply a fixed percentage change in B. The framework distinguishes conditional dependence, scenario influence, and causal interpretation; incorporates absorbing and reversible states; supports heterogeneous city-to-city coupling; and provides uncertainty intervals rather than single deterministic trajectories. No empirical performance or operational validity is claimed. The proposed model is intended as a mathematical framework for aggregate strategic conflict analysis and as a discrete-state foundation for subsequent integration with continuous attrition models.
+\end{abstract}
+
+\noindent\textbf{Keywords:} Markov chains; Monte Carlo simulation; conflict forecasting; spatial diffusion; network dynamics; urban conflict; probabilistic cascades
+
+\section{Introduction}
+Conflict does not evolve independently at each geographic location. Transportation networks, political institutions, supply systems, communications, displacement, alliances, geography, and neighbouring violence can create statistical dependence between locations. The mathematical problem considered here is therefore: given uncertainty over the future state of one city, how should that uncertainty propagate to the probability distribution over future states of other cities?
+
+Consider two hypothetical cities, $A$ and $B$. Suppose
+\begin{equation}
+P(A\text{ changes control})=0.50.
+\end{equation}
+This value alone is insufficient to determine the effect on $B$. One must additionally know quantities such as $P(B\text{ changes control}\mid A\text{ changes control})$ and $P(B\text{ changes control}\mid A\text{ does not change control})$.
+
+The purpose of this paper is to formalize that principle for an arbitrary network of locations.
+
+\section{Relation to Existing Conflict Forecasting}
+Spatial clustering and diffusion of political violence are established research problems. Buhaug and Gleditsch examined alternative explanations for the spatial clustering of civil conflict and cautioned against interpreting all clustering as direct contagion \citep{buhaug2008}. Hegre et al. developed the ViEWS political-violence early-warning system with country-level and subnational forecasting \citep{hegre2019}. Randahl and Vegelius used discrete Markov models to forecast escalating and de-escalating political violence \citep{randahl2022}.
+
+The present framework differs in objective. It focuses explicitly on the network propagation of discrete city-state uncertainty, while preserving joint probabilistic consistency through a Markov process and Monte Carlo simulation.
+
+\section{Urban Conflict Graph}
+Let
+\begin{equation}
+G=(V,E,W),
+\end{equation}
+where $V=\{1,\ldots,n\}$ is a set of cities or aggregate geographic nodes. An edge $(i,j)\in E$ means that the current state of city $i$ is permitted to influence the transition distribution of city $j$. Define $W=[w_{ij}]$ with $w_{ij}\geq0$.
+
+An edge weight need not be geographic distance alone. In a future empirical implementation, it might summarize measurable dependence arising from transportation, administration, communication, population movement, geographic adjacency, or another theoretically justified relationship. The theoretical framework does not prescribe the empirical construction of $W$.
+
+\section{State Space}
+Let the state of city $i$ at discrete time $t$ be $S_{i,t}\in\mathcal{S}$. A simple four-state specification is
+\begin{equation}
+\mathcal{S}=\{0,1,2,3\},
+\end{equation}
+where 0 denotes stable/control retained, 1 pressured, 2 contested, and 3 control changed. These labels are analytical states rather than moral or political judgments.
+
+The joint system state is
+\begin{equation}
+\mathbf{S}_t=(S_{1,t},\ldots,S_{n,t})\in\mathcal{S}^n.
+\end{equation}
+If each city has four possible states, the complete state space contains $4^n$ possible configurations. Direct enumeration therefore becomes infeasible for large $n$, motivating simulation.
+
+\section{Markov Property}
+The global process satisfies the first-order Markov assumption when
+\begin{equation}
+P(\mathbf{S}_{t+1}\mid\mathbf{S}_{0:t},\mathbf{X}_{0:t})
+=
+P(\mathbf{S}_{t+1}\mid\mathbf{S}_{t},\mathbf{X}_{t}),
+\label{eq:markov}
+\end{equation}
+where $\mathbf{X}_t$ contains contextual covariates observed at time $t$. This does not mean that each city evolves independently. Instead, city $i$'s transition may depend on the current global configuration.
+
+\section{Local Conditional Transition Model}
+Let $N(i)$ denote the neighbours of city $i$. Define network exposure to state $r$ as
+\begin{equation}
+Z_{i,t}^{(r)}=\sum_{j\in N(i)}w_{ji}\mathbb{I}(S_{j,t}=r).
+\end{equation}
+For destination state $s'$, define a transition logit
+\begin{equation}
+\eta_{i,t}(s')=\alpha_{S_{i,t},s'}+\boldsymbol{\beta}_{s'}^{\top}\mathbf{x}_{i,t}+\sum_{r\in\mathcal{S}}\gamma_{r,s'}Z_{i,t}^{(r)}.
+\end{equation}
+The normalized transition probability is
+\begin{equation}
+P(S_{i,t+1}=s'\mid\mathbf{S}_t,\mathbf{x}_{i,t})
+=
+\frac{\exp(\eta_{i,t}(s'))}{\sum_{u\in\mathcal{S}}\exp(\eta_{i,t}(u))}.
+\label{eq:softmax}
+\end{equation}
+Every city's next-state probabilities therefore sum to one.
+
+\section{Joint Transition Kernel}
+Under conditional independence of city transitions given the current global state,
+\begin{equation}
+P(\mathbf{S}_{t+1}=\mathbf{s}'\mid\mathbf{S}_t=\mathbf{s})
+=
+\prod_{i=1}^{n}P(S_{i,t+1}=s_i'\mid\mathbf{S}_t=\mathbf{s}).
+\label{eq:joint-kernel}
+\end{equation}
+This factorization is computationally convenient but is an assumption rather than a mathematical necessity. Correlated innovations can be introduced when simultaneous transitions share unobserved shocks.
+
+\begin{proposition}[Joint Markov property]
+If every local transition distribution depends only on $(\mathbf{S}_t,\mathbf{X}_t)$, then the joint city-state vector is Markov conditional on the exogenous process $\mathbf{X}_t$.
+\end{proposition}
+\begin{proof}
+The joint transition kernel contains no dependence on $\mathbf{S}_0,\ldots,\mathbf{S}_{t-1}$ after conditioning on the current state and current covariates. This is precisely the conditional Markov property.
+\end{proof}
+
+\section{The City A--City B Problem}
+Let $A$ denote the event that City A changes control during period $t+1$, and $B$ the event that City B changes control during the following period. Suppose $P(A)=p_A$. Define
+\begin{equation}
+q_1=P(B\mid A),\qquad q_0=P(B\mid A^c).
+\end{equation}
+By the law of total probability,
+\begin{equation}
+P(B)=p_Aq_1+(1-p_A)q_0.
+\label{eq:total-prob}
+\end{equation}
+This equation directly answers the motivating question.
+
+\subsection{Illustrative numerical example}
+Suppose $p_A=0.50$, $q_1=0.50$, and $q_0=0.20$. Then
+\begin{equation}
+P(B)=(0.50)(0.50)+(0.50)(0.20)=0.35.
+\end{equation}
+Thus the model gives City B a 35\% marginal probability. Relative to the conditional baseline $q_0=20\%$, the increase is 15 percentage points. The result is not 30 percentage points merely because $q_1-q_0=30$ percentage points.
+
+More generally,
+\begin{equation}
+P(B)-q_0=p_A(q_1-q_0).
+\label{eq:cascade-identity}
+\end{equation}
+This identity is central to the cascade interpretation.
+
+\section{Sensitivity}
+Differentiating \cref{eq:total-prob} gives
+\begin{equation}
+\frac{\partial P(B)}{\partial p_A}=q_1-q_0.
+\end{equation}
+Therefore the sensitivity of B's predicted state to uncertainty about A is determined by the difference between B's conditional probabilities. If $q_1=q_0$, then the modeled uncertainty about A carries no information about B's transition.
+
+\section{Multiple Neighbours}
+Suppose B is connected to cities $A_1,\ldots,A_k$. A logistic transition model can represent simultaneous effects:
+\begin{equation}
+\operatorname{logit}P(B_{t+1}=1)=\theta_0+\sum_{j=1}^{k}\theta_j\mathbb{I}(A_{j,t}=1)+\boldsymbol{\beta}^{\top}\mathbf{x}_{B,t}.
+\end{equation}
+Pairwise interactions may be included as
+\begin{equation}
+\sum_{j<\ell}\theta_{j\ell}\mathbb{I}(A_{j,t}=1)\mathbb{I}(A_{\ell,t}=1).
+\end{equation}
+This permits nonlinear cascade effects where simultaneous changes in two connected cities have a different implication than either event separately.
+
+\section{Monte Carlo Propagation}
+The number of global state trajectories increases exponentially with network size and forecast horizon. Monte Carlo simulation avoids enumerating every trajectory.
+
+For simulation $m=1,\ldots,M$, initialize $\mathbf{S}^{(m)}_0=\mathbf{S}_0$. For each future period, compute every city's transition distribution, sample the next state from that categorical distribution, update the global state, update time-varying covariates where applicable, and repeat until horizon $T$.
+
+The estimator
+\begin{equation}
+\widehat P(S_{i,T}=s)=\frac{1}{M}\sum_{m=1}^{M}\mathbb{I}(S_{i,T}^{(m)}=s)
+\label{eq:mc-estimator}
+\end{equation}
+converges to the model-implied probability as the number of independent simulations grows under the law of large numbers.
+
+\section{Cascade Probability}
+For a set of cities $C\subseteq V$, define a cascade event
+\begin{equation}
+\mathcal{C}_{k,T}=\left\{\sum_{i\in C}\mathbb{I}(S_{i,T}=3)\geq k\right\}.
+\end{equation}
+Its probability is estimated by
+\begin{equation}
+\widehat P(\mathcal{C}_{k,T})=\frac{1}{M}\sum_{m=1}^{M}\mathbb{I}(\mathcal{C}_{k,T}^{(m)}).
+\end{equation}
+This provides a probability distribution over systemic outcomes rather than only city-level marginal probabilities.
+
+\section{Scenario Influence}
+To evaluate how strongly one city is associated with another in the model, define
+\begin{equation}
+\Delta_{A\rightarrow B}(h)
+=
+P(S_{B,t+h}=3\mid S_{A,t}=3)
+-
+P(S_{B,t+h}=3\mid S_{A,t}\neq3).
+\label{eq:scenario-influence}
+\end{equation}
+This is a model-based conditional contrast. It should not automatically be described as a causal effect. A causal interpretation would require stronger structural assumptions, control of confounding variables, and an appropriate identification strategy.
+
+\section{Recovery, Reversibility, and Duration Dependence}
+A city need not remain permanently in state 3. An absorbing specification uses
+\begin{equation}
+P(S_{i,t+1}=3\mid S_{i,t}=3)=1.
+\end{equation}
+A reversible specification instead allows
+\begin{equation}
+P(S_{i,t+1}\neq3\mid S_{i,t}=3)>0.
+\end{equation}
+The correct choice is an empirical question.
+
+The simple Markov assumption also implies that the duration already spent in a state carries no additional information once the current state is known. If duration matters, define $D_{i,t}$ as the number of consecutive periods in the current state and use
+\begin{equation}
+P(S_{i,t+1}\mid S_{i,t},D_{i,t},\mathbf{S}_{N(i),t},\mathbf{x}_{i,t}),
+\end{equation}
+producing a duration-aware or semi-Markov extension.
+
+\section{Bayesian Updating}
+Let $\Theta$ denote uncertain transition parameters. Prior beliefs are represented by $p(\Theta)$. After observing data $D$,
+\begin{equation}
+p(\Theta\mid D)\propto p(D\mid\Theta)p(\Theta).
+\end{equation}
+Monte Carlo simulations can then sample $\Theta^{(m)}\sim p(\Theta\mid D)$ before sampling future state trajectories. This propagates parameter uncertainty rather than treating estimated transition coefficients as exact constants.
+
+\section{Common Causes and False Cascades}
+Suppose A and B both deteriorate after a common external event $X$. A naive model might infer $A\rightarrow B$, when the actual dependence is $X\rightarrow A$ and $X\rightarrow B$. Spatial clustering does not by itself establish contagion. This concern is consistent with the broader conflict-diffusion literature \citep{buhaug2008}. Contextual covariates should explicitly represent plausible shared drivers wherever data permit.
+
+\section{Forecast Evaluation}
+No empirical forecasts are presented here. Future evaluation should distinguish transition classification, probability calibration, multi-step trajectory prediction, cascade prediction, and geographic generalization. Appropriate metrics include the Brier score
+\begin{equation}
+BS=\frac1N\sum_{i=1}^{N}(p_i-y_i)^2,
+\end{equation}
+logarithmic loss, calibration curves, and state-specific precision and recall. Multi-class transition forecasts may use generalized Brier scores.
+
+\section{Abstract Algorithm}
+\begin{enumerate}[leftmargin=2em]
+\item Initialize current city states, network $W$, contextual covariates, transition parameters, horizon $T$, and simulation count $M$.
+\item For each Monte Carlo trial, initialize the joint city-state vector.
+\item Compute neighbour-state exposures.
+\item Evaluate local transition distributions.
+\item Sample each city's next state.
+\item Record the resulting global state and update covariates/network weights if defined.
+\item Repeat to horizon $T$.
+\item Estimate city-state marginal probabilities, joint probabilities, cascade probabilities, and uncertainty intervals.
+\item Compare scenario-conditioned trajectories and report sensitivities and assumptions.
+\end{enumerate}
+
+\section{Limitations}
+The model contains substantial simplifications. Cities are not homogeneous entities. Conflict control may be partial rather than categorical. Geographic proximity does not imply strategic dependence. Transition probabilities can change abruptly. Parameters estimated from one conflict may not transfer to another. Unobserved common causes can resemble contagion. Political decisions and negotiations may dominate military state variables. Monte Carlo simulation propagates the assumptions placed into the transition model; it does not correct incorrect assumptions.
+
+Most importantly, model probability is not certainty.
+
+\section{Contribution}
+The proposed contribution is the explicit coupling of
+\begin{equation}
+\begin{aligned}
+&\text{city network}+\text{conditional Markov transitions}+\text{cascade identities}\\
+&\qquad+\text{Monte Carlo trajectories}+\text{uncertainty propagation}
+\end{aligned}
+\end{equation}
+for aggregate conflict-state forecasting. In particular, \cref{eq:total-prob} provides the elementary building block from which network-wide probabilistic cascades can be developed.
+
+\section{Conclusion}
+A conflict forecast over multiple cities should not assign isolated probabilities and then interpret them independently. Changes in one city's state can alter the probability distribution over the states of connected cities. The correct mathematical object is therefore the joint distribution over the network.
+
+A Markov representation provides discrete state dynamics, while Monte Carlo simulation makes high-dimensional multi-period forecasting computationally tractable. The framework also answers the motivating City A--City B question precisely: the effect of uncertainty about A depends on B's conditional transition probabilities, not on an arbitrary fixed spillover percentage.
+
+\section*{Statement on AI Assistance}
+OpenAI ChatGPT was used as an editorial, mathematical-formalization, and literature-organization assistant during preparation of this manuscript. The author retains responsibility for the research concepts, interpretation, verification, and final manuscript.
+
+\begin{thebibliography}{99}
+\bibitem{buhaug2008} Buhaug, H., \& Gleditsch, K. S. (2008). Contagion or confusion? Why conflicts cluster in space. \emph{International Studies Quarterly}, 52(2), 215--233. doi:10.1111/j.1468-2478.2008.00499.x.
+\bibitem{hegre2019} Hegre, H., et al. (2019). ViEWS: A political violence early-warning system. \emph{Journal of Peace Research}, 56(2), 155--174. doi:10.1177/0022343319823860.
+\bibitem{randahl2022} Randahl, D., \& Vegelius, J. (2022). Predicting escalating and de-escalating violence in Africa using Markov models. \emph{International Interactions}, 48(4), 597--613. doi:10.1080/03050629.2022.2049772.
+\end{thebibliography}
+\end{document}

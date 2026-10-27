@@ -1,0 +1,25 @@
+{
+  "start": "A",
+  "destination": "N",
+  "observations": ["A", "C", "F", "J"],
+  "edges": [
+    {"source":"A","target":"B","weight":0.78}, {"source":"A","target":"C","weight":1.00}, {"source":"A","target":"D","weight":0.72},
+    {"source":"B","target":"E","weight":0.86}, {"source":"B","target":"F","weight":0.45},
+    {"source":"C","target":"F","weight":1.00}, {"source":"C","target":"G","weight":0.60}, {"source":"C","target":"E","weight":0.42},
+    {"source":"D","target":"G","weight":0.82}, {"source":"D","target":"H","weight":0.48},
+    {"source":"E","target":"H","weight":0.90}, {"source":"E","target":"I","weight":0.55},
+    {"source":"F","target":"I","weight":0.48}, {"source":"F","target":"J","weight":1.00}, {"source":"F","target":"H","weight":0.62},
+    {"source":"G","target":"J","weight":0.58}, {"source":"G","target":"K","weight":0.82}, {"source":"G","target":"L","weight":0.66},
+    {"source":"H","target":"K","weight":0.62}, {"source":"H","target":"M","weight":0.52}, {"source":"H","target":"N","weight":0.92},
+    {"source":"I","target":"M","weight":0.74}, {"source":"I","target":"N","weight":0.44},
+    {"source":"J","target":"M","weight":0.72}, {"source":"J","target":"N","weight":1.00}, {"source":"J","target":"K","weight":0.55},
+    {"source":"K","target":"N","weight":0.88}, {"source":"L","target":"N","weight":0.80}, {"source":"M","target":"N","weight":0.84}
+  ],
+  "historical_traces": [
+    ["A","C","F","J","N"], ["A","C","F","J","N"], ["A","C","F","J","N"],
+    ["A","B","E","H","N"], ["A","B","E","H","N"],
+    ["A","D","G","K","N"], ["A","D","G","K","N"],
+    ["A","C","G","L","N"], ["A","C","F","H","N"],
+    ["A","B","F","J","N"], ["A","D","G","J","N"]
+  ]
+}
