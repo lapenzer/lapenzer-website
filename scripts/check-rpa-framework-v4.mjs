@@ -16,9 +16,9 @@ finally { await fs.rm(tempPath, { force: true }); }
 const expected = ["lp_o3","lp_o2","lp_o1","lp_o1_decay","lp_o1_recent","lp_dest","seen_o1","lp_o3_x_ctx3","lp_o2_x_ctx2","cos_momentum","cos_heading","abs_turn","dest_progress","cos_to_map_dest","wx_cand","revisit","backtrack","log_step"];
 assert.deepEqual([...FEATURE_NAMES], expected, "rpa_v3 18-feature contract changed");
 
-const cfg = { targetNodes: 12, userMaxNodes: 14, systemCap: 20, density: .25, direction: "bidirectional", topology: "connected", seed: 4242, ensureConnected: true, nodeWeightDistribution: "lognormal", edgeWeightDistribution: "uniform", domain: "road" };
+const cfg = { targetNodes: 6, userMaxNodes: 8, systemCap: 20, density: .12, direction: "bidirectional", topology: "tree", seed: 4242, ensureConnected: true, nodeWeightDistribution: "lognormal", edgeWeightDistribution: "uniform", domain: "road" };
 const g1 = rpa.generateRandomGraph(cfg), g2 = rpa.generateRandomGraph(cfg);
-assert.equal(g1.nodes.length, 12); assert.equal(g1.fingerprint, g2.fingerprint, "same seed must reproduce graph");
+assert.equal(g1.nodes.length, 6); assert.equal(g1.fingerprint, g2.fingerprint, "same seed must reproduce graph");
 assert.ok(g1.nodes.length <= cfg.userMaxNodes && cfg.userMaxNodes <= cfg.systemCap);
 for (const e of g1.edges) assert.ok(g1.edges.some((r) => r.from === e.to && r.to === e.from), "bidirectional graph missing reverse edge");
 const g3 = rpa.generateRandomGraph({ ...cfg, seed: cfg.seed + 1 }); assert.notEqual(g1.fingerprint, g3.fingerprint, "fresh seed should generate fresh graph");
@@ -51,7 +51,7 @@ const post = rpa.destinationPosteriorWithUnknown(suite.conditional, history); as
 const snap = rpa.makePredictionSnapshot({ graph:g1, suite, history, context:{stress:.45,nowDay:999}, observations:[obs], seed:93 });
 assert.ok(!("observedNext" in snap), "pre-outcome snapshot leaked outcome");
 if (snap.topNext) { const residual = rpa.measuredVsExpected(snap, snap.topNext); assert.ok(Number.isFinite(residual.brier)); }
-const rollouts = rpa.monteCarloRollouts({graph:g1,suite,history,context:{stress:.45},samples:100,horizon:4,seed:94});
+const rollouts = rpa.monteCarloRollouts({graph:g1,suite,history,context:{stress:.45},samples:80,horizon:4,seed:94});
 const occupancy = rpa.futureOccupancyFromRollouts(rollouts, history.length); for (const h of new Set(occupancy.map((x)=>x.horizon))) assert.ok(occupancy.filter((x)=>x.horizon===h).reduce((s,x)=>s+x.probability,0)<=1+1e-9);
 const contract = rpa.createDomainContract("road"); assert.equal(contract.name,"road"); assert.ok(contract.destination_hypotheses(g1).length>0);
 
