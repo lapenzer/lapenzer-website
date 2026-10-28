@@ -1,0 +1,68 @@
+    return { trajectories: [], observations: [], validation: { format: lower.split(".").pop() ?? "unknown", trajectoryCount: 0, observations: 0, entities: 0, dateRange: [null, null], missingCoordinates: 0, missingTimestamps: 0, duplicateRows: 0, mapMatchSuccess: null, invalidTransitions: 0, graphConnected: null, candidateCoverage: null, endpointCoverage: null, errors: [error instanceof Error ? error.message : "Unable to parse upload"], warnings: [] } };
+  }
+  const validation = validateUploadedData({ trajectories, observations, graph }, lower.split(".").pop() ?? "unknown"); return { trajectories, observations, graph, validation };
+}
+
+export function makeDomainAdapterV4(domain: ExtendedDomain): DomainAdapter {
+  if (domain === "road" || domain === "terrain" || domain === "marine" || domain === "air") return makeDomainAdapter(domain);
+  const base = domain === "pedestrian" || domain === "trail" || domain === "forest" || domain === "desert" || domain === "mountain" ? makeDomainAdapter("terrain") : domain === "mixed" || domain === "abstract" || domain === "imported" ? makeDomainAdapter("road") : makeDomainAdapter("road");
+  const speed = { pedestrian: 5, trail: 4.5, forest: 3.5, desert: 7, mountain: 3, mixed: 30, abstract: 1, imported: 20 }[domain as Exclude<ExtendedDomain, "road" | "terrain" | "marine" | "air">] ?? base.speedKph;
+  return { ...base, name: domain, speedKph: speed };
+}
+
+export function createDomainContract(domain: ExtendedDomain): DomainAdapterV4Contract {
+  const adapter = makeDomainAdapterV4(domain);
+  return {
+    name: domain,
+    build_graph: (config) => generateRandomGraph({ ...config, domain }),
+    state_from_observation: (graph, observation, previousObservation) => mapMatchObservation(graph, observation, previousObservation),
+    observation_likelihood: (graph, observation, nodeId) => mapMatchObservation(graph, observation, undefined, graph.nodes.length).find((h) => h.nodeId === nodeId)?.likelihood ?? 0,
+    feasible_successors: (graph, nodeId, context) => outEdges(graph, nodeId).filter((e) => adapter.feasible(e, context)),
+    edge_features: (edge, node, context) => dynamicMatrices(edge, node, { stress: context.stress }),
+    node_features: (node) => nodeFeatureVector(node),
+    travel_time_distribution: (edge) => { const meanMinutes = edge.durationSeconds != null ? edge.durationSeconds / 60 : edge.baseMinutes ?? edge.distanceKm / Math.max(1, adapter.speedKph) * 60; return { meanMinutes, sigma: Math.max(0.05, 0.12 + 0.22 * (edge.risk ?? 0)) }; },
+    destination_hypotheses: (graph, max = 5) => pickIndependentDestinations(graph, max),
+    terminal_condition: (graph, nodeId) => outEdges(graph, nodeId).filter((e) => e.feasible !== false).length === 0,
+    render_metadata: (graph) => ({ domain, nodeCount: graph.nodes.length, edgeCount: graph.edges.length, source: graph.source }),
+  };
+}
+
+export function syntheticTrainingSet(graph: RpaGraph, count = 360, seed = 7): Trajectory[] {
+  if (graph.nodes.length === 9 && graph.nodes.some((n) => n.id === "A")) return generateSyntheticTrajectories(count, seed);
+  const rng = seededRandom(seed), terminalCandidates = graph.nodes.filter((n) => outEdges(graph, n.id).length === 0).map((n) => n.id), destinations = terminalCandidates.length ? terminalCandidates : graph.nodes.slice(-Math.max(1, Math.min(4, Math.ceil(graph.nodes.length / 5)))).map((n) => n.id), trajectories: Trajectory[] = [];
+  for (let t = 0; t < count; t += 1) { let current = graph.nodes[Math.floor(rng() * Math.max(1, graph.nodes.length - destinations.length))]?.id ?? graph.nodes[0].id; const nodes = [current]; for (let h = 0; h < Math.min(12, graph.nodes.length + 2); h += 1) { const es = outEdges(graph, current).filter((e) => !nodes.includes(e.to)); if (!es.length) break; const weights = es.map((e) => Math.exp(-0.55 * e.distanceKm) * nodeAttractiveness(nodeById(graph, e.to))); const edge = es[weightedSample(weights, rng)]; current = edge.to; nodes.push(current); if (destinations.includes(current) && nodes.length > 2 && rng() < 0.72) break; } if (nodes.length > 1) trajectories.push({ id: `S${String(t).padStart(4, "0")}`, nodes, day: t * 0.2, entity: `E${t % 30}`, origin: "synthetic" }); }
+  return trajectories;
+}
+
+export function pickIndependentDestinations(graph: RpaGraph, max = 5): NodeId[] {
+  const sinks = graph.nodes.filter((n) => outEdges(graph, n.id).length === 0), ranked = [...graph.nodes].sort((a, b) => (b.attractionRaw ?? b.popularity ?? 0) - (a.attractionRaw ?? a.popularity ?? 0)); return (sinks.length ? sinks : ranked).slice(0, Math.max(1, Math.min(max, graph.nodes.length))).map((n) => n.id);
+}
+
+export function generateHiddenTruth(graph: RpaGraph, start: NodeId, seed: number): { destination: NodeId; path: NodeId[] } {
+  const rng = seededRandom(seed), possible = graph.nodes.filter((n) => n.id !== start && dijkstraPath(graph, start, n.id).length > 1), weights = possible.map((n) => nodeAttractiveness(n)); if (!possible.length) return { destination: start, path: [start] };
+  const destination = possible[weightedSample(weights, rng)].id, alternatives = kShortestLoopless(graph, start, destination, 6, (e) => Math.max(0.01, e.distanceKm + 0.4 * (e.risk ?? 0) + 0.25 * (e.traffic ?? 0))), path = alternatives.length ? alternatives[weightedSample(alternatives.map((_, i) => Math.exp(-0.55 * i)), rng)] : dijkstraPath(graph, start, destination);
+  return { destination, path };
+}
+
+export function evaluationFromSnapshots(predictions: StoredPrediction[], outcomes: NodeId[]): { top1: number; top3: number; nll: number; brier: number; ece: number; candidateRecall: number; conformalCoverage: number; abstentionRate: number } {
+  let top1 = 0, top3 = 0, nll = 0, brier = 0, covered = 0, conformal = 0, abstain = 0, used = 0;
+  predictions.forEach((p, i) => { const y = outcomes[i]; if (!y) return; used += 1; const candidates = [...p.candidates].sort((a, b) => b.probabilities.champion - a.probabilities.champion), idx = candidates.findIndex((c) => c.node === y); if (idx >= 0) { covered += 1; if (idx === 0) top1 += 1; if (idx < 3) top3 += 1; const prob = candidates[idx].probabilities.champion; nll -= logSafe(prob); brier += candidates.reduce((s, c) => s + (c.probabilities.champion - (c.node === y ? 1 : 0)) ** 2, 0); } else { nll -= logSafe(1e-12); brier += 1; } if (p.conformalSet.includes(y)) conformal += 1; if (p.abstain) abstain += 1; });
+  const ece = used ? predictions.reduce((sum, p, i) => { const y = outcomes[i], conf = p.confidence, correct = p.topNext === y ? 1 : 0; return sum + Math.abs(conf - correct) / used; }, 0) : 0;
+  return { top1: used ? top1 / used : 0, top3: used ? top3 / used : 0, nll: used ? nll / used : Infinity, brier: used ? brier / used : Infinity, ece, candidateRecall: used ? covered / used : 0, conformalCoverage: used ? conformal / used : 0, abstentionRate: used ? abstain / used : 0 };
+}
+
+export function experimentBatch(config: GraphGenerationConfig, graphCount = 10, trajectoriesPerGraph = 200): Array<{ graphId: string; nodes: number; edges: number; density: number; seed: number; validationNll: number; top1: number; candidateRecall: number }> {
+  const fingerprints = new Set<string>(), results: Array<{ graphId: string; nodes: number; edges: number; density: number; seed: number; validationNll: number; top1: number; candidateRecall: number }> = [];
+  for (let i = 0; i < graphCount; i += 1) { const graph = generateRandomGraph({ ...config, seed: config.seed + i * 101 }, fingerprints); fingerprints.add(graph.fingerprint); const trajectories = syntheticTrainingSet(graph, trajectoriesPerGraph, graph.seed + 7), destinations = pickIndependentDestinations(graph), suite = trainModelSuite(graph, trajectories, destinations, makeDomainAdapterV4(config.domain), graph.seed + 9); results.push({ graphId: graph.graphId, nodes: graph.nodes.length, edges: graph.edges.length, density: graph.edges.length / Math.max(1, graph.nodes.length * Math.max(1, graph.nodes.length - 1)), seed: graph.seed, validationNll: Math.min(...Object.values(suite.validationNll)), top1: suite.conditional.validation?.top1 ?? 0, candidateRecall: suite.conditional.validation?.candidateCoverage ?? 0 }); }
+  return results;
+}
+
+export function legacyCompatibilityManifest(): Array<{ name: string; status: "REFERENCE REIMPLEMENTATION" | "LEGACY COMPATIBILITY"; input: string; output: string }> {
+  return [
+    { name: "historical 20→16→1 sigmoid selector", status: "LEGACY COMPATIBILITY", input: "historical candidate feature vector", output: "independent sigmoid score; never used as modern setwise champion" },
+    { name: "ingest_opensky_states.py", status: "REFERENCE REIMPLEMENTATION", input: "OpenSky-like timestamp/position/state rows", output: "normalized Observation records" },
+    { name: "ingest_aviation_weather.py", status: "REFERENCE REIMPLEMENTATION", input: "METAR/TAF/SIGMET-style context", output: "time-indexed weather context attributes" },
+    { name: "create_route_model_features.py", status: "REFERENCE REIMPLEMENTATION", input: "observation prefix + graph + historical stats", output: "rpa_v3_18 + rpa_v4_context candidate features" },
+    { name: "create_route_backend_multimodel.py", status: "REFERENCE REIMPLEMENTATION", input: "candidate groups and frozen split", output: "conditional-logit/GBM/neural scores and calibrated distributions" },
+  ];
+}
