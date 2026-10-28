@@ -1,0 +1,388 @@
+import {
+  FEATURE_NAMES,
+  beamSearch,
+  buildCandidateRows,
+  destinationPosterior,
+  fitTransitionStats,
+  generateSyntheticTrajectories,
+  makeDomainAdapter,
+  predictNext,
+  trainRpaModel,
+  type CandidateRow,
+  type DomainAdapter,
+  type Graph,
+  type GraphEdge,
+  type GraphNode,
+  type NodeId,
+  type PredictionContext,
+  type RpaModel,
+  type Trajectory,
+  type TransitionStats,
+} from "./rpaV3";
+
+export const RPA_V4_CONTEXT_FEATURES = [
+  "generalized_resistance",
+  "node_attractiveness",
+  "distance_component",
+  "terrain_component",
+  "movement_component",
+  "logistics_component",
+  "weather_component",
+  "risk_component",
+  "interest_component",
+  "asset_component",
+  "map_match_likelihood",
+  "relative_cost",
+  "path_size_factor",
+  "destination_entropy",
+  "state_confidence",
+  "source_graph",
+  "source_shortest",
+  "source_ksp",
+  "source_markov",
+  "source_frequency",
+  "source_momentum",
+  "source_stochastic",
+  "source_destination",
+  "source_soft_value",
+  "source_domain",
+] as const;
+
+export type RpaV4ContextFeature = typeof RPA_V4_CONTEXT_FEATURES[number];
+export type GraphTopology = "erdos-renyi" | "connected" | "geometric" | "grid" | "small-world" | "scale-free" | "tree" | "dag" | "layered";
+export type DirectionMode = "bidirectional" | "one-way";
+export type MapSource = "synthetic" | "google" | "imported";
+export type ExtendedDomain = "road" | "pedestrian" | "trail" | "forest" | "desert" | "terrain" | "mountain" | "marine" | "air" | "mixed" | "abstract" | "imported";
+export type CandidateSource = "graph" | "shortest" | "ksp" | "markov" | "frequency" | "momentum" | "stochastic" | "destination" | "soft_value" | "irl" | "domain";
+
+export interface NodeWeightProvenance {
+  method: "derived" | "direct" | "provider" | "imported";
+  source: string;
+  updatedAt: string;
+  units: string;
+  missing: boolean;
+  imputed: boolean;
+}
+
+export interface RpaNode extends GraphNode {
+  lat?: number;
+  lon?: number;
+  altitude?: number;
+  domain?: ExtendedDomain;
+  type?: string;
+  attractionRaw?: number;
+  attractionNormalized?: number;
+  attractionOverride?: number;
+  centrality?: number;
+  accessibility?: number;
+  landUse?: number;
+  dataQuality?: number;
+  weightProvenance?: NodeWeightProvenance;
+}
+
+export interface RpaEdge extends GraphEdge {
+  bearingDeg?: number;
+  slope?: number;
+  movement?: number;
+  logistics?: number;
+  weather?: number;
+  interest?: number;
+  asset?: number;
+  feasible?: boolean;
+  direction?: "forward" | "reverse" | "both";
+  source?: string;
+  sourceTimestamp?: string;
+  durationSeconds?: number;
+  providerDistanceMeters?: number;
+  providerDurationSeconds?: number;
+}
+
+export interface RpaGraph extends Graph {
+  nodes: RpaNode[];
+  edges: RpaEdge[];
+  graphId: string;
+  graphVersion: string;
+  source: MapSource;
+  generatedAt: string;
+  seed: number;
+  fingerprint: string;
+  parameters: Record<string, string | number | boolean>;
+  provider?: { name: string; timestamp: string; attribution?: string };
+}
+
+export interface GraphGenerationConfig {
+  targetNodes: number;
+  userMaxNodes: number;
+  systemCap: number;
+  density: number;
+  edgeCount?: number;
+  direction: DirectionMode;
+  topology: GraphTopology;
+  seed: number;
+  ensureConnected: boolean;
+  nodeWeightDistribution: "uniform" | "normal" | "lognormal";
+  edgeWeightDistribution: "uniform" | "normal" | "lognormal";
+  domain: ExtendedDomain;
+}
+
+export interface Observation {
+  id: string;
+  timestamp: number;
+  x?: number;
+  y?: number;
+  lat?: number;
+  lon?: number;
+  speed?: number | null;
+  headingDeg?: number | null;
+  accuracyMeters?: number;
+  entity?: string;
+  origin: "synthetic" | "imported" | "live";
+}
+
+export interface StateHypothesis {
+  nodeId: NodeId;
+  probability: number;
+  distanceMeters: number;
+  headingCompatibility: number;
+  likelihood: number;
+}
+
+export interface DynamicMatrixComponent {
+  name: "distance" | "terrain" | "movement" | "logistics" | "weather" | "risk" | "interest" | "asset";
+  raw: number;
+  normalized: number;
+  coefficient: number;
+  units: string;
+  provenance: string;
+  timestamp: string;
+}
+
+export interface MatrixConfig {
+  coefficients: Record<DynamicMatrixComponent["name"], number>;
+  fixedScale: Record<DynamicMatrixComponent["name"], { mean: number; scale: number }>;
+}
+
+export interface CandidateV4 {
+  node: NodeId;
+  edge: RpaEdge;
+  sources: CandidateSource[];
+  featureV3: number[];
+  featureV3Map: Record<string, number>;
+  contextFeatures: number[];
+  contextMap: Record<RpaV4ContextFeature, number>;
+  matrices: DynamicMatrixComponent[];
+  nodeAttractiveness: number;
+  resistance: number;
+  analyticalLogit: number;
+  conditionalLogit: number;
+  gbmLogit: number;
+  neuralLogit: number;
+  probabilities: {
+    analytical: number;
+    conditionalLogit: number;
+    gbm: number;
+    neural: number;
+    champion: number;
+  };
+  champion: "conditional_logit" | "gbm" | "neural" | "analytical";
+}
+
+export interface Standardizer {
+  mean: number[];
+  scale: number[];
+  fittedOn: "training";
+}
+
+export interface NeuralRankerModel {
+  version: string;
+  seed: number;
+  inputSize: number;
+  hiddenSize: number;
+  w1: number[][];
+  b1: number[];
+  w2: number[];
+  b2: number;
+  standardizer: Standardizer;
+  lambda: number;
+  temperature: number;
+  epochs: number;
+  trainingLoss: number[];
+  validationNll: number[];
+  bestValidationNll: number;
+  status: "trained" | "cold_start";
+}
+
+export interface GbmStump {
+  feature: number;
+  threshold: number;
+  left: number;
+  right: number;
+}
+
+export interface GbmRankerModel {
+  version: string;
+  seed: number;
+  learningRate: number;
+  stumps: GbmStump[];
+  temperature: number;
+  validationNll: number;
+  status: "trained" | "cold_start";
+}
+
+export interface IrlModel {
+  version: string;
+  seed: number;
+  weights: number[];
+  featureNames: readonly string[];
+  epochs: number;
+  trainingNll: number;
+  status: "trained" | "cold_start";
+}
+
+export interface DomainAdapterV4Contract {
+  name: ExtendedDomain;
+  build_graph(config: GraphGenerationConfig): RpaGraph;
+  state_from_observation(graph: RpaGraph, observation: Observation, previousObservation?: Observation): StateHypothesis[];
+  observation_likelihood(graph: RpaGraph, observation: Observation, nodeId: NodeId): number;
+  feasible_successors(graph: RpaGraph, nodeId: NodeId, context: PredictionContext): RpaEdge[];
+  edge_features(edge: RpaEdge, node: RpaNode, context: PredictionContext): DynamicMatrixComponent[];
+  node_features(node: RpaNode): number[];
+  travel_time_distribution(edge: RpaEdge): { meanMinutes: number; sigma: number };
+  destination_hypotheses(graph: RpaGraph, max?: number): NodeId[];
+  terminal_condition(graph: RpaGraph, nodeId: NodeId): boolean;
+  render_metadata(graph: RpaGraph): { domain: ExtendedDomain; nodeCount: number; edgeCount: number; source: MapSource };
+}
+
+export interface ModelSuite {
+  conditional: RpaModel;
+  gbm: GbmRankerModel;
+  neural: NeuralRankerModel;
+  irl: IrlModel;
+  champion: "conditional_logit" | "gbm" | "neural";
+  validationNll: Record<"conditional_logit" | "gbm" | "neural", number>;
+  featureSchemaVersion: "rpa_v3_18+rpa_v4_context";
+  trainedAt: string;
+  seed: number;
+}
+
+export interface StoredPrediction {
+  id: string;
+  timestamp: number;
+  observationCount: number;
+  currentState: StateHypothesis[];
+  destinationPosterior: Array<{ id: NodeId | "OTHER/UNKNOWN"; probability: number }>;
+  candidates: CandidateV4[];
+  topNext: NodeId | null;
+  beam: Array<{ nodes: NodeId[]; logProbability: number; conditionalWeight: number; etaMinutes: [number, number, number] }>;
+  occupancy: Array<{ nodeId: NodeId; horizon: number; probability: number }>;
+  confidence: number;
+  entropy: number;
+  conformalSet: NodeId[];
+  abstain: boolean;
+  modelVersion: string;
+  graphVersion: string;
+  featureSchemaVersion: string;
+  randomSeed: number;
+  latencyMs: number;
+  provenance: string[];
+}
+
+export interface ResidualRecord {
+  predictionId: string;
+  observedNext: NodeId;
+  probabilityResidual: Record<NodeId, number>;
+  brier: number;
+  surprise: number;
+  timeResidual?: number;
+  spatialResidualMeters?: number;
+  headingResidualDeg?: number;
+  resistanceResidual?: number;
+}
+
+export interface UploadValidationReport {
+  format: string;
+  trajectoryCount: number;
+  observations: number;
+  entities: number;
+  dateRange: [string | null, string | null];
+  missingCoordinates: number;
+  missingTimestamps: number;
+  duplicateRows: number;
+  mapMatchSuccess: number | null;
+  invalidTransitions: number;
+  graphConnected: boolean | null;
+  candidateCoverage: number | null;
+  endpointCoverage: number | null;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ParsedUpload {
+  trajectories: Trajectory[];
+  observations: Observation[];
+  graph?: RpaGraph;
+  validation: UploadValidationReport;
+}
+
+const EPS = 1e-9;
+const EARTH_RADIUS_M = 6371008.8;
+const OTHER_UNKNOWN = "OTHER/UNKNOWN" as const;
+
+export const DEFAULT_MATRIX_CONFIG: MatrixConfig = {
+  coefficients: { distance: 1, terrain: 0.55, movement: 0.35, logistics: 0.45, weather: 0.5, risk: 0.7, interest: -0.35, asset: -0.25 },
+  fixedScale: {
+    distance: { mean: 1.5, scale: 1.5 }, terrain: { mean: 0.4, scale: 0.35 }, movement: { mean: 0.4, scale: 0.35 },
+    logistics: { mean: 0.35, scale: 0.3 }, weather: { mean: 0.35, scale: 0.3 }, risk: { mean: 0.35, scale: 0.3 },
+    interest: { mean: 0.5, scale: 0.35 }, asset: { mean: 0.5, scale: 0.35 },
+  },
+};
+
+export function finite(value: number, fallback = 0): number { return Number.isFinite(value) ? value : fallback; }
+export function clamp(value: number, lo = 0, hi = 1): number { return Math.max(lo, Math.min(hi, value)); }
+export function logSafe(value: number): number { return Math.log(Math.max(value, 1e-12)); }
+export function logSumExp(values: number[]): number {
+  if (!values.length) return -Infinity;
+  const m = Math.max(...values);
+  return m + Math.log(values.reduce((sum, v) => sum + Math.exp(v - m), 0));
+}
+export function stableSoftmax(logits: number[], temperature = 1): number[] {
+  if (!logits.length) return [];
+  const t = Math.max(0.02, temperature);
+  const m = Math.max(...logits);
+  const exps = logits.map((v) => Math.exp((v - m) / t));
+  const z = exps.reduce((a, b) => a + b, 0) || 1;
+  return exps.map((v) => v / z);
+}
+export function entropy(probs: number[]): number { return -probs.reduce((s, p) => p > 0 ? s + p * Math.log(p) : s, 0); }
+
+export function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => { state = (1664525 * state + 1013904223) >>> 0; return state / 4294967296; };
+}
+
+export function hashText(input: string): string {
+  let h1 = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) { h1 ^= input.charCodeAt(i); h1 = Math.imul(h1, 16777619); }
+  return (h1 >>> 0).toString(16).padStart(8, "0");
+}
+
+export function haversineMeters(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const r = Math.PI / 180;
+  const p1 = a.lat * r, p2 = b.lat * r, dphi = (b.lat - a.lat) * r, dlambda = (b.lon - a.lon) * r;
+  const x = Math.sin(dphi / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dlambda / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
+}
+
+export function initialBearingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const r = Math.PI / 180, p1 = a.lat * r, p2 = b.lat * r, dl = (b.lon - a.lon) * r;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function angleDiffDeg(a: number, b: number): number { return Math.abs((((a - b) % 360) + 540) % 360 - 180); }
+function normalSample(rng: () => number): number {
+  const u1 = Math.max(rng(), 1e-12), u2 = rng();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+function weightedSample(values: number[], rng: () => number): number {
