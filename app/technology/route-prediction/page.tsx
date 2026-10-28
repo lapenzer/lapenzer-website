@@ -4,12 +4,174 @@ import { TechnologyPage } from "@/components/TechnologyPage";
 import { TechnicalDetails } from "@/components/TechnicalDetails";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { RouteExample } from "@/components/ModelExample";
-export const metadata: Metadata = { title: "Route prediction", description: "How UZUSKE ranks routes, how the historical aircraft prototype worked, and how shortest-path candidate generation connects to learned candidate selection." };
-export default function RoutePrediction() { return <TechnologyPage number="01" title="Route prediction on directed graphs." subtitle="Route prediction & shortest-path research" description="UZUSKE ranks routes from a start node to a destination using historical transitions, edge weights, and recent observations. The broader research compares candidate-generation methods with learned route selection." status="Local evaluation build + research framework" sections={[
-  { id: "question", label: "The question", content: <><h2>How are routes ranked?</h2><p>A directed graph specifies which moves are allowed. Historical traces count how often each transition occurred. The route model combines these inputs to rank paths between a start and a destination.</p><p>Keep three layers distinct: the runnable UZUSKE evaluation build, the earlier aircraft next-node prototype, and the broader candidate-generation and learned-selection framework.</p></> },
-  { id: "inputs", label: "Inputs", content: <><h2>A graph, a history, and a destination.</h2><ul><li>A directed graph with positive structural edge priors.</li><li>A start node and destination contained in the graph.</li><li>Historical traces: ordered sequences of visited nodes.</li><li>Recent observations that can strengthen matching transitions.</li><li>Explicit search limits: retained Top-K, beam width, and maximum hops.</li></ul><p>In UZUSKE 1.0, larger weights mean stronger structural preference. Converting distance, travel time, or resistance into a prior requires a deliberate modelling choice.</p></> },
-  { id: "calculation", label: "Calculation", content: <><h2>Calculate transition scores and search routes.</h2><p>For each transition, the local build blends a smoothed empirical frequency with the edge’s normalized structural prior. A decaying recency bonus then rewards recently observed transitions.</p><p>Loop-free beam search expands promising routes within a fixed budget. Scores add logarithms of transition values along a path. The retained Top-K scores are exponentiated relative to their maximum and normalized to sum to one.</p><TechnicalDetails><pre>{`base(u,v) = 0.72 × (count(u,v) + 1)\n                    / (outgoing_count(u) + outdegree(u))\n          + 0.28 × weight(u,v) / Σ outgoing_weights(u)\n\nbonus(u,v) = 1 + Σmatching observations 0.18 × exp(−0.55 × age)\nscore(route) = Σedges log(base × bonus)\nshare(i) = exp(score(i) − max_score) / Σretained exp(score − max_score)`}</pre><p>Smoothing gives unseen historical transitions a nonzero contribution. The recency adjustment is a scoring bonus, so it does not constrain candidates to an observed prefix. Defaults: K=4, beam width=48, maximum hops=8.</p></TechnicalDetails></> },
-  { id: "outputs", label: "Outputs", content: <><h2>Return the ranked route candidates.</h2><p>Return each route’s node sequence, rank, log score, and relative share among retained candidates. The bundled example ranks A → C → F → J → N first with a 36.2938% share across the Top-4.</p><p>Changing K changes the normalization. Changing an observation or structural prior can change the ranking. These shares describe the candidate set; independent calibration would be required to interpret them as real-world confidence levels.</p><Link className="text-link" href="/models/uzuske">Inspect the downloadable model ↗</Link></> },
-  { id: "broader-framework", label: "Broader framework", content: <><h2>Separate path generation from path selection.</h2><p>The broader research first generates feasible candidates using minimum-cost paths, loopless K-path methods, transition history, node frequency, destination progress, context-dependent resistance, or stochastic proposals. A learned selector then compares features for those candidates.</p><ol className="architecture-steps"><li><strong>Graph & context</strong><span>Connectivity, observations, restrictions, and resistance definitions.</span></li><li><strong>Feasible candidates</strong><span>Several ways to propose valid next moves or routes.</span></li><li><strong>Candidate features</strong><span>History, cost, frequency, progress, and context.</span></li><li><strong>Learned selector</strong><span>Compare candidates within a precisely defined prediction task.</span></li><li><strong>Ranking & uncertainty</strong><span>Inspect alternatives, calibration, and abstention.</span></li></ol><p>Terrain and logistics resistance are research extensions requiring their own measurement and validation. In the earlier aircraft implementation, BigQuery stored candidate features, NumPy and pandas handled numerical processing, and a neural selector used one 16-unit ReLU hidden layer with a sigmoid output. One Monte Carlo feature in the code was a proxy.</p><Link className="text-link" href="/research/route-framework">Read the framework and evidence ↗</Link></> },
-  { id: "evidence", label: "Evidence & evaluation", content: <><EvidencePanel status="Local example reproduced"><p>The current 14-node, 29-edge UZUSKE example has been run from its Python source. The website calculator is checked against that source. It demonstrates reproducible route ranking on a synthetic graph.</p></EvidencePanel><p>The earlier aircraft paper reports a separate next-node experiment. Its sample size and reported validation result appear together on the <Link href="/research/aircraft-prototype">historical evidence page</Link>. That experiment has not been independently reproduced here.</p><div className="table-scroll"><table><caption>Evaluation definitions, rather than additional measured results</caption><thead><tr><th scope="col">Measure</th><th scope="col">Question it answers</th></tr></thead><tbody>{[["Candidate recall", "Did candidate generation include the observed answer?"], ["Top-K coverage", "Was the observed answer in the K highest-ranked outputs?"], ["Next-node accuracy", "Did the highest-ranked next node match the next observation?"], ["Full-route agreement", "Did the predicted sequence match the complete observed route?"], ["Geometric error", "How far apart were predicted and observed positions?"], ["Brier score", "How close were forecast probabilities to observed binary outcomes?"], ["Calibration", "Did events occur as often as their assigned probability suggested?"]].map(([a, b]) => <tr key={a}><th scope="row">{a}</th><td>{b}</td></tr>)}</tbody></table></div></> },
-]}><RouteExample /></TechnologyPage>; }
+
+export const metadata: Metadata = {
+  title: "Route prediction",
+  description:
+    "How UZUSKE ranks routes, how the historical aircraft prototype worked, and how shortest-path candidate generation connects to learned candidate selection.",
+};
+
+export default function RoutePrediction() {
+  return (
+    <TechnologyPage
+      number="01"
+      title="Route prediction on directed graphs."
+      subtitle="Route prediction & shortest-path research"
+      description="UZUSKE ranks routes from a start node to a destination using historical transitions, edge weights, and recent observations. The broader research compares candidate-generation methods with learned route selection."
+      status="Local evaluation build + research framework"
+      sections={[
+        {
+          id: "question",
+          label: "The question",
+          content: (
+            <>
+              <h2>How are routes ranked?</h2>
+              <p>
+                A directed graph specifies which moves are allowed. Historical traces count how often each transition occurred. The route model combines these inputs to rank paths between a start and a destination.
+              </p>
+              <p>
+                Keep three layers distinct: the runnable UZUSKE evaluation build, the earlier aircraft next-node prototype, and the broader candidate-generation and learned-selection framework.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: "inputs",
+          label: "Inputs",
+          content: (
+            <>
+              <h2>A graph, a history, and a destination.</h2>
+              <ul>
+                <li>A directed graph with positive structural edge priors.</li>
+                <li>A start node and destination contained in the graph.</li>
+                <li>Historical traces: ordered sequences of visited nodes.</li>
+                <li>Recent observations that can strengthen matching transitions.</li>
+                <li>Explicit search limits: retained Top-K, beam width, and maximum hops.</li>
+              </ul>
+              <p>
+                In UZUSKE 1.0, larger weights mean stronger structural preference. Converting distance, travel time, or resistance into a prior requires a deliberate modelling choice.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: "calculation",
+          label: "Calculation",
+          content: (
+            <>
+              <h2>Calculate transition scores and search routes.</h2>
+              <p>
+                For each transition, the local build blends a smoothed empirical frequency with the edge&apos;s normalized structural prior. A decaying recency bonus then rewards recently observed transitions.
+              </p>
+              <p>
+                Loop-free beam search expands promising routes within a fixed budget. Scores add logarithms of transition values along a path. The retained Top-K scores are exponentiated relative to their maximum and normalized to sum to one.
+              </p>
+              <TechnicalDetails>
+                <pre>{`base(u,v) = 0.72 × (count(u,v) + 1)\n                    / (outgoing_count(u) + outdegree(u))\n          + 0.28 × weight(u,v) / Σ outgoing_weights(u)\n\nbonus(u,v) = 1 + Σmatching observations 0.18 × exp(−0.55 × age)\nscore(route) = Σedges log(base × bonus)\nshare(i) = exp(score(i) − max_score) / Σretained exp(score − max_score)`}</pre>
+                <p>
+                  Smoothing gives unseen historical transitions a nonzero contribution. The recency adjustment is a scoring bonus, so it does not constrain candidates to an observed prefix. Defaults: K=4, beam width=48, maximum hops=8.
+                </p>
+              </TechnicalDetails>
+            </>
+          ),
+        },
+        {
+          id: "outputs",
+          label: "Outputs",
+          content: (
+            <>
+              <h2>Return the ranked route candidates.</h2>
+              <p>
+                Return each route&apos;s node sequence, rank, log score, and relative share among retained candidates. The bundled example ranks A → C → F → J → N first with a 36.2938% share across the Top-4.
+              </p>
+              <p>
+                Changing K changes the normalization. Changing an observation or structural prior can change the ranking. These shares describe the candidate set; independent calibration would be required to interpret them as real-world confidence levels.
+              </p>
+              <Link className="text-link" href="/models/uzuske">
+                Inspect the downloadable model ↗
+              </Link>
+            </>
+          ),
+        },
+        {
+          id: "broader-framework",
+          label: "Broader framework",
+          content: (
+            <>
+              <h2>Separate path generation from path selection.</h2>
+              <p>
+                The broader research first generates feasible candidates using minimum-cost paths, loopless K-path methods, transition history, node frequency, destination progress, context-dependent resistance, or stochastic proposals. A learned selector then compares features for those candidates.
+              </p>
+              <ol className="architecture-steps">
+                <li><strong>Graph & context</strong><span>Connectivity, observations, restrictions, and resistance definitions.</span></li>
+                <li><strong>Feasible candidates</strong><span>Several ways to propose valid next moves or routes.</span></li>
+                <li><strong>Candidate features</strong><span>History, cost, frequency, progress, and context.</span></li>
+                <li><strong>Learned selector</strong><span>Compare candidates within a precisely defined prediction task.</span></li>
+                <li><strong>Ranking & uncertainty</strong><span>Inspect alternatives, calibration, and abstention.</span></li>
+              </ol>
+              <p>
+                Terrain and logistics resistance are research extensions requiring their own measurement and validation. In the earlier aircraft implementation, BigQuery stored candidate features, NumPy and pandas handled numerical processing, and a neural selector used one 16-unit ReLU hidden layer with a sigmoid output. One Monte Carlo feature in the code was a proxy.
+              </p>
+              <Link className="text-link" href="/research/route-framework">
+                Read the framework and evidence ↗
+              </Link>
+            </>
+          ),
+        },
+        {
+          id: "interactive-lab",
+          label: "Interactive RPA lab",
+          content: (
+            <>
+              <h2>Run the specification-aligned RPA laboratory.</h2>
+              <p>
+                The dedicated RPA workspace keeps the active destination hidden by default and exposes Bayesian destination inference, the documented 18-feature candidate vector, calibrated conditional-logit ranking, conformal uncertainty, path-size-corrected beam forecasting, ETA quantiles, domain adapters, controlled feedback and a separate live-telemetry evidence layer.
+              </p>
+              <p>
+                Live device location is not treated as proof of real-world predictive accuracy. Real-map scoring requires a compatible geographic graph and held-out map-matched outcomes.
+              </p>
+              <Link className="text-link" href="/rpa">
+                Open the full RPA laboratory ↗
+              </Link>
+            </>
+          ),
+        },
+        {
+          id: "evidence",
+          label: "Evidence & evaluation",
+          content: (
+            <>
+              <EvidencePanel status="Local example reproduced">
+                <p>
+                  The current 14-node, 29-edge UZUSKE example has been run from its Python source. The website calculator is checked against that source. It demonstrates reproducible route ranking on a synthetic graph.
+                </p>
+              </EvidencePanel>
+              <p>
+                The earlier aircraft paper reports a separate next-node experiment. Its sample size and reported validation result appear together on the <Link href="/research/aircraft-prototype">historical evidence page</Link>. That experiment has not been independently reproduced here.
+              </p>
+              <div className="table-scroll">
+                <table>
+                  <caption>Evaluation definitions, rather than additional measured results</caption>
+                  <thead><tr><th scope="col">Measure</th><th scope="col">Question it answers</th></tr></thead>
+                  <tbody>
+                    {[
+                      ["Candidate recall", "Did candidate generation include the observed answer?"],
+                      ["Top-K coverage", "Was the observed answer in the K highest-ranked outputs?"],
+                      ["Next-node accuracy", "Did the highest-ranked next node match the next observation?"],
+                      ["Full-route agreement", "Did the predicted sequence match the complete observed route?"],
+                      ["Geometric error", "How far apart were predicted and observed positions?"],
+                      ["Brier score", "How close were forecast probabilities to observed binary outcomes?"],
+                      ["Calibration", "Did events occur as often as their assigned probability suggested?"],
+                    ].map(([a, b]) => <tr key={a}><th scope="row">{a}</th><td>{b}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ),
+        },
+      ]}
+    >
+      <RouteExample />
+    </TechnologyPage>
+  );
+}
