@@ -1,0 +1,115 @@
+function contextFeatures(graph: RpaGraph, row: CandidateRow, sources: Set<CandidateSource>, stateConfidence: number, destinationEntropy: number, context: PredictionContext, allCosts: number[]): { values: number[]; map: Record<RpaV4ContextFeature, number>; matrices: DynamicMatrixComponent[]; resistance: number; attractiveness: number } {
+  const edge = row.edge as RpaEdge, node = nodeById(graph, row.node), matrices = dynamicMatrices(edge, node, { stress: context.stress }), resistance = generalizedResistance(matrices), attractiveness = nodeAttractiveness(node), minCost = Math.min(...allCosts), maxCost = Math.max(...allCosts), rel = maxCost - minCost < EPS ? 0 : (resistance - minCost) / (maxCost - minCost);
+  const matrix = Object.fromEntries(matrices.map((m) => [m.name, m.normalized])) as Record<DynamicMatrixComponent["name"], number>;
+  const raw: Record<RpaV4ContextFeature, number> = {
+    generalized_resistance: resistance, node_attractiveness: Math.log(Math.max(attractiveness, 1e-9)), distance_component: matrix.distance, terrain_component: matrix.terrain, movement_component: matrix.movement,
+    logistics_component: matrix.logistics, weather_component: matrix.weather, risk_component: matrix.risk, interest_component: matrix.interest, asset_component: matrix.asset,
+    map_match_likelihood: stateConfidence, relative_cost: rel, path_size_factor: pathSizeFactor([], row.node), destination_entropy: destinationEntropy, state_confidence: stateConfidence,
+    source_graph: sources.has("graph") ? 1 : 0, source_shortest: sources.has("shortest") ? 1 : 0, source_ksp: sources.has("ksp") ? 1 : 0, source_markov: sources.has("markov") ? 1 : 0,
+    source_frequency: sources.has("frequency") ? 1 : 0, source_momentum: sources.has("momentum") ? 1 : 0, source_stochastic: sources.has("stochastic") ? 1 : 0, source_destination: sources.has("destination") ? 1 : 0,
+    source_soft_value: sources.has("soft_value") || sources.has("irl") ? 1 : 0, source_domain: sources.has("domain") ? 1 : 0,
+  };
+  return { values: RPA_V4_CONTEXT_FEATURES.map((name) => finite(raw[name])), map: raw, matrices, resistance, attractiveness };
+}
+
+function dot(a: number[], b: number[]): number { return a.reduce((sum, v, i) => sum + v * (b[i] ?? 0), 0); }
+
+function fitStandardizer(rows: number[][]): Standardizer {
+  const d = rows[0]?.length ?? 0, mean = Array(d).fill(0), scale = Array(d).fill(1);
+  rows.forEach((r) => r.forEach((v, i) => { mean[i] += v / Math.max(1, rows.length); }));
+  for (let i = 0; i < d; i += 1) { const variance = rows.reduce((s, r) => s + (r[i] - mean[i]) ** 2, 0) / Math.max(1, rows.length - 1); scale[i] = Math.max(1e-6, Math.sqrt(variance)); }
+  return { mean, scale, fittedOn: "training" };
+}
+function standardize(x: number[], s: Standardizer): number[] { return x.map((v, i) => (v - (s.mean[i] ?? 0)) / Math.max(s.scale[i] ?? 1, 1e-6)); }
+
+interface V4Group { trajectoryId: string; day: number; candidates: Array<{ node: NodeId; x: number[] }>; trueIndex: number; }
+
+function groupsFromStats(graph: RpaGraph, stats: TransitionStats, trajectories: Trajectory[], destinations: NodeId[], adapter: DomainAdapter, matrixConfig = DEFAULT_MATRIX_CONFIG): V4Group[] {
+  void matrixConfig;
+  const groups: V4Group[] = [];
+  const modelLike: RpaModel = { graph, destinations, adapter, stats, ranker: null, mode: "cold_start", trainingTrajectories: stats.trajectoryCount, validation: null, test: null, conformalThreshold: null, dataOrigin: "synthetic", version: "rpa-v4-group-builder" };
+  for (const trajectory of trajectories) {
+    for (let i = 0; i < trajectory.nodes.length - 1; i += 1) {
+      const history = trajectory.nodes.slice(0, i + 1), trueNext = trajectory.nodes[i + 1], ctx: PredictionContext = { stress: 0.45, nowDay: trajectory.day + i * 0.001 }, built = buildCandidateRows(modelLike, history, ctx), prov = candidateProvenance(graph, stats, history, modelLike, ctx, 17 + i), costs = built.rows.map((r) => generalizedResistance(dynamicMatrices(r.edge as RpaEdge, nodeById(graph, r.node), { stress: ctx.stress })));
+      const candidates = built.rows.map((r) => { const c = contextFeatures(graph, r, prov.get(r.node) ?? new Set(["graph"]), 1, built.posterior.entropy, ctx, costs); return { node: r.node, x: [...r.features, ...c.values] }; });
+      groups.push({ trajectoryId: trajectory.id, day: trajectory.day, candidates, trueIndex: candidates.findIndex((c) => c.node === trueNext) });
+    }
+  }
+  return groups;
+}
+
+function forwardTrainingGroups(graph: RpaGraph, train: Trajectory[], destinations: NodeId[], adapter: DomainAdapter): V4Group[] {
+  const blocks = Array.from({ length: 6 }, (_, i) => train.slice(Math.floor(i * train.length / 6), Math.floor((i + 1) * train.length / 6)));
+  const groups: V4Group[] = [];
+  for (let b = 2; b <= 5; b += 1) { const history = blocks.slice(0, b).flat(), next = blocks[b]; if (!next?.length) continue; groups.push(...groupsFromStats(graph, fitTransitionStats(graph, history), next, destinations, adapter)); }
+  return groups;
+}
+
+function modelNll(groups: V4Group[], scorer: (x: number[]) => number, temperature = 1): number {
+  let loss = 0, n = 0;
+  for (const g of groups) { if (g.trueIndex < 0 || !g.candidates.length) continue; const probs = stableSoftmax(g.candidates.map((c) => scorer(c.x)), temperature); loss -= logSafe(probs[g.trueIndex]); n += 1; }
+  return n ? loss / n : Infinity;
+}
+
+function fitTemperatureV4(groups: V4Group[], scorer: (x: number[]) => number): number {
+  let bestT = 1, best = Infinity;
+  for (let t = 0.35; t <= 3.01; t += 0.05) { const nll = modelNll(groups, scorer, t); if (nll < best) { best = nll; bestT = t; } }
+  return bestT;
+}
+
+export function trainGbmRanker(trainGroups: V4Group[], validationGroups: V4Group[], seed = 31, rounds = 48): GbmRankerModel {
+  const rows = trainGroups.flatMap((g) => g.candidates.map((c, i) => ({ x: c.x, y: i === g.trueIndex ? 1 : 0 })));
+  if (rows.length < 20) return { version: "gbm-v4-cold", seed, learningRate: 0.08, stumps: [], temperature: 1, validationNll: Infinity, status: "cold_start" };
+  const d = rows[0].x.length, lr = 0.08, stumps: GbmStump[] = [], pred = Array(rows.length).fill(0);
+  for (let round = 0; round < rounds; round += 1) {
+    const probs = rows.map((_, i) => 1 / (1 + Math.exp(-pred[i]))), residual = rows.map((r, i) => r.y - probs[i]);
+    let best: { stump: GbmStump; error: number } | null = null;
+    for (let f = 0; f < d; f += 1) {
+      const vals = rows.map((r) => r.x[f]).sort((a, b) => a - b), thresholds = [0.2, 0.4, 0.6, 0.8].map((q) => vals[Math.min(vals.length - 1, Math.floor(q * vals.length))]);
+      for (const threshold of thresholds) {
+        const leftIdx = rows.map((r, i) => r.x[f] <= threshold ? i : -1).filter((i) => i >= 0), rightIdx = rows.map((r, i) => r.x[f] > threshold ? i : -1).filter((i) => i >= 0);
+        const mean = (ids: number[]) => ids.length ? ids.reduce((s, i) => s + residual[i], 0) / ids.length : 0, left = mean(leftIdx), right = mean(rightIdx);
+        const error = rows.reduce((s, r, i) => s + (residual[i] - (r.x[f] <= threshold ? left : right)) ** 2, 0);
+        if (!best || error < best.error) best = { stump: { feature: f, threshold, left, right }, error };
+      }
+    }
+    if (!best) break; stumps.push(best.stump); rows.forEach((r, i) => { pred[i] += lr * (r.x[best!.stump.feature] <= best!.stump.threshold ? best!.stump.left : best!.stump.right); });
+  }
+  const scorer = (x: number[]) => stumps.reduce((s, tree) => s + lr * (x[tree.feature] <= tree.threshold ? tree.left : tree.right), 0), temperature = fitTemperatureV4(validationGroups, scorer), validationNll = modelNll(validationGroups, scorer, temperature);
+  return { version: `gbm-v4-${hashText(`${seed}:${rounds}:${validationNll}`)}`, seed, learningRate: lr, stumps, temperature, validationNll, status: "trained" };
+}
+
+export function scoreGbm(model: GbmRankerModel, x: number[]): number { return model.stumps.reduce((s, tree) => s + model.learningRate * (x[tree.feature] <= tree.threshold ? tree.left : tree.right), 0); }
+
+function relu(v: number): number { return Math.max(0, v); }
+function forwardNeural(model: NeuralRankerModel, xRaw: number[]): { x: number[]; h: number[]; pre: number[]; logit: number } {
+  const x = standardize(xRaw, model.standardizer), pre = model.w1.map((row, j) => dot(row, x) + model.b1[j]), h = pre.map(relu), logit = dot(model.w2, h) + model.b2;
+  return { x, h, pre, logit: finite(logit) };
+}
+
+export function scoreNeural(model: NeuralRankerModel, x: number[]): number { return forwardNeural(model, x).logit; }
+
+export function trainNeuralRanker(trainGroups: V4Group[], validationGroups: V4Group[], seed = 41, hiddenSize = 16, maxEpochs = 180, lambda = 1e-4): NeuralRankerModel {
+  const trainingRows = trainGroups.flatMap((g) => g.candidates.map((c) => c.x));
+  if (trainingRows.length < 30) return { version: "neural-v4-cold", seed, inputSize: trainingRows[0]?.length ?? FEATURE_NAMES.length + RPA_V4_CONTEXT_FEATURES.length, hiddenSize, w1: [], b1: [], w2: [], b2: 0, standardizer: fitStandardizer(trainingRows.length ? trainingRows : [Array(FEATURE_NAMES.length + RPA_V4_CONTEXT_FEATURES.length).fill(0)]), lambda, temperature: 1, epochs: 0, trainingLoss: [], validationNll: [], bestValidationNll: Infinity, status: "cold_start" };
+  const standardizer = fitStandardizer(trainingRows), inputSize = trainingRows[0].length, rng = seededRandom(seed), scale = Math.sqrt(2 / Math.max(1, inputSize));
+  let w1 = Array.from({ length: hiddenSize }, () => Array.from({ length: inputSize }, () => normalSample(rng) * scale)), b1 = Array(hiddenSize).fill(0), w2 = Array.from({ length: hiddenSize }, () => normalSample(rng) * Math.sqrt(2 / hiddenSize)), b2 = 0;
+  const mW1 = w1.map((r) => r.map(() => 0)), vW1 = w1.map((r) => r.map(() => 0)), mB1 = b1.map(() => 0), vB1 = b1.map(() => 0), mW2 = w2.map(() => 0), vW2 = w2.map(() => 0); let mB2 = 0, vB2 = 0, step = 0;
+  const trainingLoss: number[] = [], validationNll: number[] = []; let bestNll = Infinity, best = { w1: w1.map((r) => [...r]), b1: [...b1], w2: [...w2], b2 }, patience = 0;
+  const tempModel = (): NeuralRankerModel => ({ version: "training", seed, inputSize, hiddenSize, w1, b1, w2, b2, standardizer, lambda, temperature: 1, epochs: 0, trainingLoss: [], validationNll: [], bestValidationNll: Infinity, status: "trained" });
+  const adam = (value: number, grad: number, m: number, v: number, lr: number) => { const beta1 = 0.9, beta2 = 0.999; const nm = beta1 * m + (1 - beta1) * grad, nv = beta2 * v + (1 - beta2) * grad * grad, mh = nm / (1 - beta1 ** step), vh = nv / (1 - beta2 ** step); return [value - lr * mh / (Math.sqrt(vh) + 1e-8), nm, nv] as const; };
+  for (let epoch = 0; epoch < maxEpochs; epoch += 1) {
+    const gW1 = w1.map((r) => r.map((v) => lambda * v)), gB1 = b1.map(() => 0), gW2 = w2.map((v) => lambda * v); let gB2 = 0, loss = 0, used = 0;
+    for (const group of trainGroups) {
+      if (group.trueIndex < 0 || !group.candidates.length) continue;
+      const model = tempModel(), fw = group.candidates.map((c) => forwardNeural(model, c.x)), probs = stableSoftmax(fw.map((f) => f.logit)); loss -= logSafe(probs[group.trueIndex]); used += 1;
+      for (let c = 0; c < fw.length; c += 1) {
+        const dlogit = probs[c] - (c === group.trueIndex ? 1 : 0), f = fw[c];
+        for (let h = 0; h < hiddenSize; h += 1) { gW2[h] += dlogit * f.h[h]; const dh = dlogit * w2[h] * (f.pre[h] > 0 ? 1 : 0); gB1[h] += dh; for (let j = 0; j < inputSize; j += 1) gW1[h][j] += dh * f.x[j]; }
+        gB2 += dlogit;
+      }
+    }
+    if (!used) break; const inv = 1 / used, lr = 0.012 * Math.max(0.2, 1 - epoch / maxEpochs); step += 1;
+    for (let h = 0; h < hiddenSize; h += 1) {
+      for (let j = 0; j < inputSize; j += 1) { const [nv, nm, vv] = adam(w1[h][j], gW1[h][j] * inv, mW1[h][j], vW1[h][j], lr); w1[h][j] = nv; mW1[h][j] = nm; vW1[h][j] = vv; }
+      const [nb, mb, vb] = adam(b1[h], gB1[h] * inv, mB1[h], vB1[h], lr); b1[h] = nb; mB1[h] = mb; vB1[h] = vb;
