@@ -1,0 +1,93 @@
+
+export interface BootstrapDecision {
+  probabilities: number[];
+  trueIndex: number;
+}
+
+export interface BootstrapTrajectoryGroup {
+  trajectoryId: string;
+  decisions: BootstrapDecision[];
+}
+
+export interface BootstrapMetricInterval {
+  estimate: number;
+  lower95: number;
+  upper95: number;
+}
+
+export interface TrajectoryBootstrapSummary {
+  trajectories: number;
+  decisions: number;
+  replicates: number;
+  top1: BootstrapMetricInterval;
+  top3: BootstrapMetricInterval;
+  nll: BootstrapMetricInterval;
+  brier: BootstrapMetricInterval;
+}
+
+function percentileSorted(values: number[], q: number): number {
+  if (!values.length) return NaN;
+  const x = Math.max(0, Math.min(1, q)) * (values.length - 1), lo = Math.floor(x), hi = Math.ceil(x);
+  return values[lo] + (values[hi] - values[lo]) * (x - lo);
+}
+
+function bootstrapMetrics(groups: BootstrapTrajectoryGroup[]) {
+  let decisions = 0, top1 = 0, top3 = 0, nll = 0, brier = 0;
+  for (const group of groups) for (const decision of group.decisions) {
+    if (decision.trueIndex < 0 || decision.trueIndex >= decision.probabilities.length) continue;
+    decisions += 1;
+    const order = decision.probabilities.map((p, i) => [p, i] as const).sort((a, b) => b[0] - a[0]);
+    if (order[0]?.[1] === decision.trueIndex) top1 += 1;
+    if (order.slice(0, 3).some(([, i]) => i === decision.trueIndex)) top3 += 1;
+    nll -= logSafe(decision.probabilities[decision.trueIndex] ?? 0);
+    brier += decision.probabilities.reduce((s, p, i) => s + (p - (i === decision.trueIndex ? 1 : 0)) ** 2, 0);
+  }
+  return { decisions, top1: decisions ? top1 / decisions : 0, top3: decisions ? top3 / decisions : 0, nll: decisions ? nll / decisions : Infinity, brier: decisions ? brier / decisions : Infinity };
+}
+
+export function trajectoryBootstrap(groups: BootstrapTrajectoryGroup[], replicates = 500, seed = 991): TrajectoryBootstrapSummary {
+  if (!groups.length) throw new Error("Trajectory bootstrap requires at least one whole trajectory/entity group.");
+  const point = bootstrapMetrics(groups), rng = seededRandom(seed), draws = { top1: [] as number[], top3: [] as number[], nll: [] as number[], brier: [] as number[] };
+  for (let b = 0; b < Math.max(1, replicates); b += 1) {
+    const sampled = Array.from({ length: groups.length }, () => groups[Math.floor(rng() * groups.length)]), metrics = bootstrapMetrics(sampled);
+    draws.top1.push(metrics.top1); draws.top3.push(metrics.top3); draws.nll.push(metrics.nll); draws.brier.push(metrics.brier);
+  }
+  const interval = (estimate: number, values: number[]): BootstrapMetricInterval => { const sorted = values.filter(Number.isFinite).sort((a, b) => a - b); return { estimate, lower95: percentileSorted(sorted, 0.025), upper95: percentileSorted(sorted, 0.975) }; };
+  return { trajectories: groups.length, decisions: point.decisions, replicates: Math.max(1, replicates), top1: interval(point.top1, draws.top1), top3: interval(point.top3, draws.top3), nll: interval(point.nll, draws.nll), brier: interval(point.brier, draws.brier) };
+}
+
+export interface CorrelationDiagnostic { featureA: string; featureB: string; correlation: number; warning: boolean; }
+
+export function featureCorrelationDiagnostics(rows: number[][], names: readonly string[], threshold = 0.95): CorrelationDiagnostic[] {
+  if (!rows.length) return [];
+  const d = Math.min(names.length, rows[0].length), means = Array(d).fill(0);
+  for (const row of rows) for (let j = 0; j < d; j += 1) means[j] += finite(row[j]) / rows.length;
+  const out: CorrelationDiagnostic[] = [];
+  for (let a = 0; a < d; a += 1) for (let b = a + 1; b < d; b += 1) {
+    let num = 0, va = 0, vb = 0;
+    for (const row of rows) { const xa = finite(row[a]) - means[a], xb = finite(row[b]) - means[b]; num += xa * xb; va += xa * xa; vb += xb * xb; }
+    const correlation = va > 0 && vb > 0 ? num / Math.sqrt(va * vb) : 0;
+    out.push({ featureA: names[a], featureB: names[b], correlation, warning: Math.abs(correlation) >= threshold });
+  }
+  return out.sort((x, y) => Math.abs(y.correlation) - Math.abs(x.correlation));
+}
+
+export function softmaxInvariantFeatures(candidateRows: number[][], names: readonly string[], tolerance = 1e-12): string[] {
+  if (candidateRows.length < 2) return [];
+  return names.slice(0, candidateRows[0].length).filter((_, j) => {
+    const first = finite(candidateRows[0][j]);
+    return candidateRows.every((row) => Math.abs(finite(row[j]) - first) <= tolerance);
+  });
+}
+
+export function baselineModelDistributions(candidates: CandidateV4[]) {
+  const momentum = stableSoftmax(candidates.map((c) => finite(c.featureV3Map.cos_momentum)));
+  const minimumResistance = stableSoftmax(candidates.map((c) => -finite(c.resistance)));
+  const markov = stableSoftmax(candidates.map((c) => finite(c.featureV3Map.lp_o3)));
+  return candidates.map((candidate, i) => ({ node: candidate.node, momentum: momentum[i], minimumResistance: minimumResistance[i], markov: markov[i], conditionalLogit: candidate.probabilities.conditionalLogit, gbm: candidate.probabilities.gbm, neural: candidate.probabilities.neural }));
+}
+
+export function candidateCoverageWithOutsideClass(candidateSets: Array<{ candidates: NodeId[]; trueNode: NodeId }>) {
+  const total = candidateSets.length, covered = candidateSets.filter((x) => x.candidates.includes(x.trueNode)).length;
+  return { total, covered, missing: total - covered, candidateRecall: total ? covered / total : 0, outsideCandidateClass: total ? (total - covered) / total : 0 };
+}
