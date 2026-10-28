@@ -1,0 +1,168 @@
+  const z = values.reduce((a, b) => a + Math.max(0, b), 0);
+  if (z <= 0) return Math.floor(rng() * values.length);
+  let u = rng() * z;
+  for (let i = 0; i < values.length; i += 1) { u -= Math.max(0, values[i]); if (u <= 0) return i; }
+  return values.length - 1;
+}
+
+function sampledWeight(kind: GraphGenerationConfig["nodeWeightDistribution"], rng: () => number): number {
+  if (kind === "normal") return clamp(0.5 + 0.18 * normalSample(rng));
+  if (kind === "lognormal") return clamp(Math.exp(-0.85 + 0.45 * normalSample(rng)));
+  return 0.15 + 0.8 * rng();
+}
+
+function ensureConfig(config: GraphGenerationConfig): GraphGenerationConfig {
+  const systemCap = Math.max(1, Math.floor(config.systemCap));
+  const userMaxNodes = Math.max(1, Math.min(systemCap, Math.floor(config.userMaxNodes)));
+  const targetNodes = Math.max(1, Math.min(userMaxNodes, Math.floor(config.targetNodes)));
+  return { ...config, systemCap, userMaxNodes, targetNodes, density: clamp(config.density, 0.01, 1) };
+}
+
+function graphFingerprint(nodes: RpaNode[], edges: RpaEdge[]): string {
+  const canon = JSON.stringify({
+    n: nodes.map((n) => [n.id, +n.x.toFixed(5), +n.y.toFixed(5), +(n.attractionRaw ?? 0).toFixed(5)]).sort(),
+    e: edges.map((e) => [e.from, e.to, +e.distanceKm.toFixed(5)]).sort(),
+  });
+  return hashText(canon);
+}
+
+export function generateRandomGraph(input: GraphGenerationConfig, existingFingerprints = new Set<string>()): RpaGraph {
+  let config = ensureConfig(input);
+  let attempt = 0;
+  while (attempt < 20) {
+    const seed = config.seed + attempt * 7919;
+    const rng = seededRandom(seed);
+    const n = config.targetNodes;
+    const nodes: RpaNode[] = Array.from({ length: n }, (_, i) => {
+      const side = Math.ceil(Math.sqrt(n));
+      const row = Math.floor(i / side), col = i % side;
+      let x = rng(), y = rng();
+      if (config.topology === "grid" || config.topology === "layered") {
+        x = side <= 1 ? 0.5 : col / Math.max(1, side - 1);
+        y = side <= 1 ? 0.5 : row / Math.max(1, side - 1);
+      }
+      const attractionRaw = sampledWeight(config.nodeWeightDistribution, rng);
+      return {
+        id: `N${String(i + 1).padStart(2, "0")}`,
+        x, y, domain: config.domain, attractionRaw, attractionNormalized: attractionRaw,
+        popularity: attractionRaw, centrality: 0, accessibility: 0.5, dataQuality: 1,
+        weightProvenance: { method: "derived", source: `${config.nodeWeightDistribution} seed ${seed}`, updatedAt: new Date(0).toISOString(), units: "0-1 index", missing: false, imputed: false },
+      };
+    });
+    const edgeKeys = new Set<string>();
+    const edges: RpaEdge[] = [];
+    const add = (i: number, j: number) => {
+      if (i === j) return;
+      const a = nodes[i], b = nodes[j], key = `${a.id}>${b.id}`;
+      if (edgeKeys.has(key)) return;
+      edgeKeys.add(key);
+      const distanceKm = Math.max(0.05, Math.hypot(b.x - a.x, b.y - a.y) * 12);
+      const weight = sampledWeight(config.edgeWeightDistribution, rng);
+      edges.push({ id: key, from: a.id, to: b.id, distanceKm, terrain: clamp(1 - weight), traffic: rng(), risk: rng() * 0.75, movement: rng(), logistics: rng(), weather: rng() * 0.7, interest: b.attractionRaw ?? 0.5, asset: 0.5 + 0.5 * rng(), feasible: true, direction: config.direction === "bidirectional" ? "both" : "forward", source: "synthetic generator" });
+    };
+    const connectPair = (i: number, j: number) => { add(i, j); if (config.direction === "bidirectional") add(j, i); };
+
+    if (n > 1 && (config.ensureConnected || ["connected", "tree", "grid", "small-world", "scale-free", "layered"].includes(config.topology))) {
+      for (let i = 1; i < n; i += 1) {
+        const parent = config.topology === "tree" ? Math.floor((i - 1) / 2) : i - 1;
+        connectPair(parent, i);
+      }
+    }
+    if (config.topology === "grid") {
+      const side = Math.ceil(Math.sqrt(n));
+      for (let i = 0; i < n; i += 1) {
+        if (i + 1 < n && (i + 1) % side !== 0) connectPair(i, i + 1);
+        if (i + side < n) connectPair(i, i + side);
+      }
+    } else if (config.topology === "geometric") {
+      const threshold = Math.sqrt(Math.max(config.density, 0.05) / Math.max(n, 2)) * 2.4;
+      for (let i = 0; i < n; i += 1) for (let j = i + 1; j < n; j += 1) if (Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y) <= threshold) connectPair(i, j);
+    } else if (config.topology === "dag" || config.topology === "layered") {
+      for (let i = 0; i < n; i += 1) for (let j = i + 1; j < n; j += 1) if (rng() < config.density) add(i, j);
+    } else if (config.topology === "small-world") {
+      for (let i = 0; i < n; i += 1) { connectPair(i, (i + 1) % n); if (n > 3) connectPair(i, (i + 2) % n); }
+      for (let i = 0; i < n; i += 1) if (rng() < config.density) connectPair(i, Math.floor(rng() * n));
+    } else if (config.topology === "scale-free") {
+      const degree = Array(n).fill(1);
+      for (let i = 1; i < n; i += 1) {
+        const total = degree.slice(0, i).reduce((a, b) => a + b, 0);
+        let u = rng() * total, target = 0;
+        for (; target < i - 1; target += 1) { u -= degree[target]; if (u <= 0) break; }
+        connectPair(target, i); degree[target] += 1; degree[i] += 1;
+        if (i > 2 && rng() < config.density) connectPair(Math.floor(rng() * i), i);
+      }
+    } else if (config.topology === "erdos-renyi" || config.topology === "connected") {
+      for (let i = 0; i < n; i += 1) for (let j = i + 1; j < n; j += 1) if (rng() < config.density) connectPair(i, j);
+    }
+    if (config.edgeCount && config.edgeCount > 0) {
+      while (edges.length < config.edgeCount && edges.length < n * Math.max(0, n - 1)) add(Math.floor(rng() * n), Math.floor(rng() * n));
+      if (edges.length > config.edgeCount) edges.splice(config.edgeCount);
+    }
+    const degree = new Map<NodeId, number>();
+    edges.forEach((e) => { degree.set(e.from, (degree.get(e.from) ?? 0) + 1); degree.set(e.to, (degree.get(e.to) ?? 0) + 1); });
+    const maxDegree = Math.max(1, ...degree.values());
+    nodes.forEach((node) => { node.centrality = (degree.get(node.id) ?? 0) / maxDegree; node.accessibility = clamp((node.centrality ?? 0) * 0.7 + (node.attractionRaw ?? 0.5) * 0.3); });
+    const fingerprint = graphFingerprint(nodes, edges);
+    if (!existingFingerprints.has(fingerprint)) {
+      return { nodes, edges, graphId: `graph-${hashText(`${seed}:${fingerprint}`)}`, graphVersion: `synthetic-v4-${fingerprint}`, source: "synthetic", generatedAt: new Date().toISOString(), seed, fingerprint, parameters: { ...config, seed }, provider: { name: "LAPENZER deterministic generator", timestamp: new Date().toISOString() } };
+    }
+    attempt += 1;
+  }
+  throw new Error("Unable to generate a unique graph after 20 deterministic attempts.");
+}
+
+export function graphFromRouteMatrix(input: {
+  nodes: Array<{ id: string; lat: number; lon: number; label?: string }>;
+  matrix: Array<{ originIndex: number; destinationIndex: number; distanceMeters: number; durationSeconds: number; condition?: string }>;
+  seed: number;
+  domain?: ExtendedDomain;
+  providerTimestamp?: string;
+}): RpaGraph {
+  const ts = input.providerTimestamp ?? new Date().toISOString();
+  const nodes: RpaNode[] = input.nodes.map((n, i) => ({ id: n.id, x: n.lon, y: n.lat, lon: n.lon, lat: n.lat, domain: input.domain ?? "road", type: n.label ?? "routable point", attractionRaw: 1, attractionNormalized: 1, popularity: 0.5, centrality: 0, accessibility: 0.5, dataQuality: 1, weightProvenance: { method: "provider", source: "Google Routes API routable locations", updatedAt: ts, units: "derived index", missing: false, imputed: false } }));
+  const edges: RpaEdge[] = input.matrix.filter((row) => row.originIndex !== row.destinationIndex && row.distanceMeters > 0 && row.durationSeconds > 0 && row.condition !== "ROUTE_NOT_FOUND").map((row) => {
+    const a = nodes[row.originIndex], b = nodes[row.destinationIndex];
+    return { id: `${a.id}>${b.id}`, from: a.id, to: b.id, distanceKm: row.distanceMeters / 1000, baseMinutes: row.durationSeconds / 60, durationSeconds: row.durationSeconds, providerDistanceMeters: row.distanceMeters, providerDurationSeconds: row.durationSeconds, bearingDeg: initialBearingDeg({ lat: a.lat!, lon: a.lon! }, { lat: b.lat!, lon: b.lon! }), terrain: 0, traffic: 0, risk: 0, movement: 0, logistics: 0, weather: 0, interest: 0.5, asset: 1, feasible: true, direction: "forward", source: "Google Routes API ComputeRouteMatrix", sourceTimestamp: ts };
+  });
+  const degree = new Map<string, number>(); edges.forEach((e) => degree.set(e.to, (degree.get(e.to) ?? 0) + 1));
+  const maxDegree = Math.max(1, ...degree.values()); nodes.forEach((n) => { n.centrality = (degree.get(n.id) ?? 0) / maxDegree; n.attractionRaw = 0.7 + 0.3 * (n.centrality ?? 0); n.attractionNormalized = n.attractionRaw; });
+  const fingerprint = graphFingerprint(nodes, edges);
+  return { nodes, edges, graphId: `google-${hashText(`${input.seed}:${fingerprint}`)}`, graphVersion: `google-routes-v1-${fingerprint}`, source: "google", generatedAt: ts, seed: input.seed, fingerprint, parameters: { nodes: nodes.length, providerEdges: edges.length, unknownDestination: true }, provider: { name: "Google Maps JavaScript API + Routes API", timestamp: ts, attribution: "Google" } };
+}
+
+export function nodeFeatureVector(node: RpaNode): number[] {
+  return [node.popularity ?? 0.5, node.centrality ?? 0, node.accessibility ?? 0.5, node.landUse ?? 0, node.dataQuality ?? 1];
+}
+
+export function nodeAttractiveness(node: RpaNode, theta = [0.45, 0.35, 0.25, 0.1, 0.2]): number {
+  if (node.attractionOverride != null) return Math.max(1e-6, node.attractionOverride);
+  const z = nodeFeatureVector(node);
+  const logA = z.reduce((s, v, i) => s + (theta[i] ?? 0) * finite(v), 0);
+  return Math.exp(Math.max(-12, Math.min(12, logA)));
+}
+
+
+export function candidateUtilityProbabilities(rows: Array<{ betaDot: number; node: RpaNode; resistance: number }>, lambda = 0.65): number[] {
+  return stableSoftmax(rows.map((row) => finite(row.betaDot) + Math.log(Math.max(nodeAttractiveness(row.node), 1e-12)) - Math.max(0, lambda) * finite(row.resistance)));
+}
+
+export function mapMatchObservation(graph: RpaGraph, observation: Observation, previousObservation?: Observation, topK = 5): StateHypothesis[] {
+  const sigma = Math.max(5, observation.accuracyMeters ?? 35);
+  const candidates = graph.nodes.map((node) => {
+    let distanceMeters: number;
+    if (observation.lat != null && observation.lon != null && node.lat != null && node.lon != null) distanceMeters = haversineMeters({ lat: observation.lat, lon: observation.lon }, { lat: node.lat, lon: node.lon });
+    else distanceMeters = Math.hypot((observation.x ?? 0) - node.x, (observation.y ?? 0) - node.y) * 1000;
+    let headingCompatibility = 1;
+    if (observation.headingDeg != null && previousObservation) {
+      const edgeBearing = previousObservation.lat != null && previousObservation.lon != null && observation.lat != null && observation.lon != null ? initialBearingDeg({ lat: previousObservation.lat, lon: previousObservation.lon }, { lat: observation.lat, lon: observation.lon }) : observation.headingDeg;
+      headingCompatibility = Math.exp(-(angleDiffDeg(observation.headingDeg, edgeBearing) ** 2) / (2 * 45 ** 2));
+    }
+    const likelihood = Math.exp(-(distanceMeters ** 2) / (2 * sigma ** 2)) * Math.max(0.05, headingCompatibility);
+    return { nodeId: node.id, distanceMeters, headingCompatibility, likelihood, probability: 0 };
+  }).sort((a, b) => b.likelihood - a.likelihood).slice(0, Math.max(1, topK));
+  const z = candidates.reduce((s, c) => s + c.likelihood, 0) || 1;
+  return candidates.map((c) => ({ ...c, probability: c.likelihood / z }));
+}
+
+export function dynamicMatrices(edge: RpaEdge, node: RpaNode, context: { stress: number; timestamp?: string }, config: MatrixConfig = DEFAULT_MATRIX_CONFIG): DynamicMatrixComponent[] {
+  const timestamp = context.timestamp ?? new Date().toISOString();
