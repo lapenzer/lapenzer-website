@@ -1,0 +1,222 @@
+.shell {
+  width: min(1500px, calc(100% - 32px));
+  margin: 0 auto 72px;
+  padding: 28px;
+  border: 1px solid rgba(127,127,127,.24);
+  border-radius: 24px;
+  background: rgba(127,127,127,.035);
+}
+
+.heading {
+  display: grid;
+  grid-template-columns: minmax(0,1.4fr) auto;
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.kicker,
+.step {
+  display: block;
+  margin: 0 0 8px;
+  font-size: .72rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+.heading h2,
+.card h3 {
+  margin: 0;
+  letter-spacing: -.035em;
+}
+
+.heading h2 {
+  font-size: clamp(1.8rem,3vw,3.2rem);
+}
+
+.heading p,
+.card p {
+  line-height: 1.6;
+  opacity: .7;
+}
+
+.badge,
+.status {
+  width: fit-content;
+  padding: 8px 11px;
+  border: 1px solid rgba(127,127,127,.24);
+  border-radius: 999px;
+  font-size: .72rem;
+  white-space: nowrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 14px;
+}
+
+.card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid rgba(127,127,127,.18);
+  border-radius: 18px;
+  background: rgba(127,127,127,.025);
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.card h3 {
+  font-size: 1.35rem;
+}
+
+.live {
+  border-color: currentColor;
+  font-weight: 700;
+}
+
+.error {
+  border-style: dashed;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.actions button,
+.reset {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #0c0d0e;
+  color: white;
+  cursor: pointer;
+}
+
+.secondary {
+  background: transparent !important;
+  color: inherit !important;
+  border: 1px solid rgba(127,127,127,.28) !important;
+}
+
+.telemetry,
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 9px;
+  margin: 16px 0 0;
+}
+
+.telemetry div,
+.metrics div,
+.probability {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(127,127,127,.055);
+}
+
+.telemetry dt,
+.metrics span,
+.probability span {
+  display: block;
+  font-size: .67rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+.telemetry dd {
+  margin: 5px 0 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.placeholder {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px dashed rgba(127,127,127,.25);
+  border-radius: 12px;
+  line-height: 1.5;
+  opacity: .62;
+}
+
+.probability {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+  margin: 16px 0;
+}
+
+.probability strong {
+  font-size: 1.5rem;
+}
+
+.featureList {
+  display: grid;
+  gap: 8px;
+}
+
+.featureList label {
+  display: grid;
+  grid-template-columns: minmax(112px,1fr) minmax(70px,1.4fr) 38px;
+  gap: 8px;
+  align-items: center;
+  font-size: .75rem;
+}
+
+.featureList input {
+  width: 100%;
+}
+
+.featureList strong {
+  text-align: right;
+}
+
+.metrics {
+  grid-template-columns: 1fr;
+}
+
+.metrics strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 1.25rem;
+}
+
+.claim {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(127,127,127,.16);
+}
+
+.reset {
+  margin-top: 6px;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(127,127,127,.28);
+}
+
+@media (max-width: 1050px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    width: min(100% - 20px,1500px);
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .heading { grid-template-columns: 1fr; }
+  .telemetry { grid-template-columns: 1fr; }
+  .featureList label { grid-template-columns: 1fr 1.5fr 38px; }
+}
