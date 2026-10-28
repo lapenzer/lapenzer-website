@@ -1,0 +1,144 @@
+  const raw: Record<DynamicMatrixComponent["name"], { value: number; units: string; provenance: string }> = {
+    distance: { value: edge.distanceKm, units: "km", provenance: edge.providerDistanceMeters ? "provider route distance" : "graph edge distance" },
+    terrain: { value: edge.terrain ?? 0, units: "0-1 index", provenance: "edge terrain attribute" },
+    movement: { value: edge.movement ?? edge.traffic ?? 0, units: "0-1 index", provenance: "movement/context attribute" },
+    logistics: { value: edge.logistics ?? 0, units: "0-1 index", provenance: "logistics attribute" },
+    weather: { value: edge.weather ?? 0, units: "0-1 index", provenance: "weather/context at cutoff" },
+    risk: { value: edge.risk ?? 0, units: "0-1 index", provenance: "generic risk attribute" },
+    interest: { value: edge.interest ?? Math.log(nodeAttractiveness(node)), units: "utility index", provenance: "posterior-independent node interest" },
+    asset: { value: edge.asset ?? 1, units: "capability index", provenance: "domain capability attribute" },
+  };
+  return (Object.keys(raw) as DynamicMatrixComponent["name"][]).map((name) => {
+    const scale = config.fixedScale[name];
+    const normalized = finite((raw[name].value - scale.mean) / Math.max(scale.scale, 1e-6));
+    return { name, raw: raw[name].value, normalized, coefficient: config.coefficients[name] * (name === "movement" || name === "weather" || name === "risk" ? Math.max(0.1, context.stress) : 1), units: raw[name].units, provenance: raw[name].provenance, timestamp };
+  });
+}
+
+export function generalizedResistance(matrices: DynamicMatrixComponent[]): number {
+  return finite(matrices.reduce((sum, m) => sum + m.coefficient * m.normalized, 0));
+}
+
+export function distanceOnlyProbability(distances: number[], alpha: number): number[] { return stableSoftmax(distances.map((d) => -Math.max(0, alpha) * d)); }
+
+function edgeByNodes(graph: RpaGraph, from: NodeId, to: NodeId): RpaEdge | undefined { return graph.edges.find((e) => e.from === from && e.to === to); }
+function nodeById(graph: RpaGraph, id: NodeId): RpaNode { const node = graph.nodes.find((n) => n.id === id); if (!node) throw new Error(`Unknown node ${id}`); return node; }
+function outEdges(graph: RpaGraph, id: NodeId): RpaEdge[] { return graph.edges.filter((e) => e.from === id && e.feasible !== false); }
+
+export function dijkstraPath(graph: RpaGraph, start: NodeId, goal: NodeId, costFn: (edge: RpaEdge) => number = (e) => e.distanceKm): NodeId[] {
+  const dist = new Map<NodeId, number>(), prev = new Map<NodeId, NodeId | null>(), open = new Set(graph.nodes.map((n) => n.id));
+  graph.nodes.forEach((n) => { dist.set(n.id, n.id === start ? 0 : Infinity); prev.set(n.id, null); });
+  while (open.size) {
+    let u: NodeId | null = null, best = Infinity;
+    open.forEach((id) => { const d = dist.get(id) ?? Infinity; if (d < best) { best = d; u = id; } });
+    if (u == null || !Number.isFinite(best)) break;
+    open.delete(u); if (u === goal) break;
+    for (const edge of outEdges(graph, u)) { const alt = best + Math.max(0, costFn(edge)); if (alt < (dist.get(edge.to) ?? Infinity)) { dist.set(edge.to, alt); prev.set(edge.to, u); } }
+  }
+  if (!Number.isFinite(dist.get(goal) ?? Infinity)) return [];
+  const path: NodeId[] = []; let cur: NodeId | null = goal;
+  while (cur) { path.unshift(cur); if (cur === start) break; cur = prev.get(cur) ?? null; }
+  return path[0] === start ? path : [];
+}
+
+export function aStarPath(graph: RpaGraph, start: NodeId, goal: NodeId, costFn: (edge: RpaEdge) => number = (e) => e.distanceKm): NodeId[] {
+  const goalNode = nodeById(graph, goal), heuristic = (id: NodeId) => Math.hypot(nodeById(graph, id).x - goalNode.x, nodeById(graph, id).y - goalNode.y);
+  const open = new Set<NodeId>([start]), came = new Map<NodeId, NodeId>(), g = new Map<NodeId, number>([[start, 0]]), f = new Map<NodeId, number>([[start, heuristic(start)]]);
+  while (open.size) {
+    let current = [...open].sort((a, b) => (f.get(a) ?? Infinity) - (f.get(b) ?? Infinity))[0];
+    if (current === goal) { const path = [current]; while (came.has(current)) { current = came.get(current)!; path.unshift(current); } return path; }
+    open.delete(current);
+    for (const edge of outEdges(graph, current)) { const tentative = (g.get(current) ?? Infinity) + Math.max(0, costFn(edge)); if (tentative < (g.get(edge.to) ?? Infinity)) { came.set(edge.to, current); g.set(edge.to, tentative); f.set(edge.to, tentative + heuristic(edge.to)); open.add(edge.to); } }
+  }
+  return [];
+}
+
+export function kShortestLoopless(graph: RpaGraph, start: NodeId, goal: NodeId, k = 5, costFn: (edge: RpaEdge) => number = (e) => e.distanceKm): NodeId[][] {
+  const paths: Array<{ nodes: NodeId[]; cost: number }> = [];
+  const walk = (current: NodeId, path: NodeId[], cost: number) => {
+    if (paths.length > k * 40 || path.length > Math.min(graph.nodes.length, 14)) return;
+    if (current === goal) { paths.push({ nodes: path, cost }); return; }
+    const edges = outEdges(graph, current).sort((a, b) => costFn(a) - costFn(b));
+    for (const edge of edges) if (!path.includes(edge.to)) walk(edge.to, [...path, edge.to], cost + Math.max(0, costFn(edge)));
+  };
+  walk(start, [start], 0);
+  return paths.sort((a, b) => a.cost - b.cost).slice(0, k).map((p) => p.nodes);
+}
+
+export function softValuePolicy(graph: RpaGraph, current: NodeId, destinations: Map<NodeId, number>, costFn: (edge: RpaEdge) => number, tau = 1): Map<NodeId, number> {
+  const values = new Map<NodeId, number>(); graph.nodes.forEach((n) => values.set(n.id, destinations.has(n.id) ? Math.log(Math.max(destinations.get(n.id) ?? 0, 1e-6)) : -12));
+  for (let iter = 0; iter < 80; iter += 1) {
+    let delta = 0; const next = new Map(values);
+    for (const node of graph.nodes) {
+      if (destinations.has(node.id)) continue;
+      const es = outEdges(graph, node.id); if (!es.length) continue;
+      const q = es.map((e) => (-Math.max(0, costFn(e)) + (values.get(e.to) ?? -12)) / Math.max(0.05, tau));
+      const v = Math.max(-50, Math.min(50, tau * logSumExp(q))); delta = Math.max(delta, Math.abs(v - (values.get(node.id) ?? 0))); next.set(node.id, v);
+    }
+    next.forEach((v, id) => values.set(id, v)); if (delta < 1e-7) break;
+  }
+  const edges = outEdges(graph, current), probs = stableSoftmax(edges.map((e) => -Math.max(0, costFn(e)) + (values.get(e.to) ?? -12)), tau), out = new Map<NodeId, number>();
+  edges.forEach((e, i) => out.set(e.to, probs[i])); return out;
+}
+
+export function bayesianShrinkage(entityCount: number, entityTotal: number, populationProbability: number, tau = 20): number {
+  const e = Math.max(0, entityCount), n = Math.max(0, entityTotal), prior = clamp(populationProbability, 1e-9, 1 - 1e-9), strength = Math.max(0, tau);
+  return (e + strength * prior) / Math.max(1e-9, n + strength);
+}
+
+function edgeBetweenV4(graph: RpaGraph, from: NodeId, to: NodeId): RpaEdge | undefined { return graph.edges.find((e) => e.from === from && e.to === to); }
+const IRL_FEATURE_NAMES = ["distance", "terrain", "movement", "logistics", "weather", "risk", "negative_interest", "negative_asset"] as const;
+function irlEdgeFeatures(edge: RpaEdge): number[] {
+  return [Math.max(0, edge.distanceKm), edge.terrain ?? 0, edge.movement ?? edge.traffic ?? 0, edge.logistics ?? 0, edge.weather ?? 0, edge.risk ?? 0, -(edge.interest ?? 0), -(edge.asset ?? 0)];
+}
+export function trainMaxEntIrl(graph: RpaGraph, trajectories: Trajectory[], seed = 73, epochs = 90): IrlModel {
+  const transitions = trajectories.flatMap((t) => t.nodes.slice(0, -1).map((from, i) => ({ from, to: t.nodes[i + 1] }))).filter((tr) => edgeBetweenV4(graph, tr.from, tr.to));
+  if (transitions.length < 12) return { version: "irl-v4-cold", seed, weights: [1, .4, .3, .3, .35, .6, .2, .2], featureNames: IRL_FEATURE_NAMES, epochs: 0, trainingNll: Infinity, status: "cold_start" };
+  let w = [1, .4, .3, .3, .35, .6, .2, .2], nll = Infinity;
+  for (let epoch = 0; epoch < epochs; epoch += 1) {
+    const grad = w.map(() => 0); let loss = 0, used = 0;
+    for (const tr of transitions) {
+      const edges = outEdges(graph, tr.from).filter((e) => e.feasible !== false); if (!edges.length) continue;
+      const logits = edges.map((e) => -dot(w, irlEdgeFeatures(e))), probs = stableSoftmax(logits), idx = edges.findIndex((e) => e.to === tr.to); if (idx < 0) continue;
+      loss -= logSafe(probs[idx]); used += 1;
+      const empirical = irlEdgeFeatures(edges[idx]);
+      const expected = Array(w.length).fill(0); edges.forEach((e, j) => irlEdgeFeatures(e).forEach((v, k) => { expected[k] += probs[j] * v; }));
+      for (let k = 0; k < w.length; k += 1) grad[k] += empirical[k] - expected[k];
+    }
+    if (!used) break; const lr = 0.05 / Math.sqrt(epoch + 1);
+    w = w.map((v, k) => clamp(v - lr * grad[k] / used, -3, 5)); nll = loss / used;
+  }
+  return { version: `irl-v4-${hashText(`${seed}:${w.join(",")}:${nll}`)}`, seed, weights: w, featureNames: IRL_FEATURE_NAMES, epochs, trainingNll: nll, status: "trained" };
+}
+export function irlNextDistribution(graph: RpaGraph, current: NodeId, model: IrlModel): Map<NodeId, number> {
+  const edges = outEdges(graph, current).filter((e) => e.feasible !== false), probs = stableSoftmax(edges.map((e) => -dot(model.weights, irlEdgeFeatures(e))));
+  return new Map(edges.map((e, i) => [e.to, probs[i]]));
+}
+
+function candidateProvenance(graph: RpaGraph, stats: TransitionStats, history: NodeId[], model: RpaModel, context: PredictionContext, seed: number): Map<NodeId, Set<CandidateSource>> {
+  const current = history[history.length - 1], provenance = new Map<NodeId, Set<CandidateSource>>(), add = (node: NodeId, source: CandidateSource) => { const set = provenance.get(node) ?? new Set<CandidateSource>(); set.add(source); provenance.set(node, set); };
+  outEdges(graph, current).forEach((e) => add(e.to, "graph"));
+  const posterior = destinationPosterior(model.graph, stats, history, model.destinations), dests = [...posterior.probs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  const costFn = (e: RpaEdge) => Math.max(0.001, generalizedResistance(dynamicMatrices(e, nodeById(graph, e.to), { stress: context.stress })) + 2);
+  for (const [dest] of dests) {
+    const shortest = dijkstraPath(graph, current, dest, costFn); if (shortest.length > 1) add(shortest[1], "shortest");
+    kShortestLoopless(graph, current, dest, 3, costFn).forEach((p) => { if (p.length > 1) add(p[1], "ksp"); });
+  }
+  const v3rows = buildCandidateRows(model, history, context).rows;
+  v3rows.sort((a, b) => b.featureMap.lp_o3 - a.featureMap.lp_o3).slice(0, 3).forEach((r) => add(r.node, "markov"));
+  v3rows.sort((a, b) => b.featureMap.seen_o1 - a.featureMap.seen_o1).slice(0, 3).forEach((r) => add(r.node, "frequency"));
+  v3rows.sort((a, b) => b.featureMap.cos_momentum - a.featureMap.cos_momentum).slice(0, 2).forEach((r) => add(r.node, "momentum"));
+  v3rows.sort((a, b) => b.featureMap.lp_dest - a.featureMap.lp_dest).slice(0, 3).forEach((r) => add(r.node, "destination"));
+  const soft = softValuePolicy(graph, current, posterior.probs, costFn); [...soft.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([id]) => add(id, "soft_value"));
+  const rng = seededRandom(seed); const edges = outEdges(graph, current), weights = edges.map((e) => Math.exp(-Math.max(0, costFn(e))));
+  for (let i = 0; i < Math.min(4, edges.length * 2); i += 1) if (edges.length) add(edges[weightedSample(weights, rng)].to, "stochastic");
+  edges.filter((e) => model.adapter.feasible(e, context)).slice(0, 4).forEach((e) => add(e.to, "domain"));
+  return provenance;
+}
+
+function pathSizeFactor(candidates: NodeId[][], candidate: NodeId): number {
+  if (!candidates.length) return 1;
+  const touching = candidates.filter((p) => p.includes(candidate)).length;
+  return Math.max(1e-6, 1 / Math.max(1, touching));
+}
+
