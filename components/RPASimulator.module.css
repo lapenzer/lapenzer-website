@@ -1,0 +1,551 @@
+.shell {
+  width: min(1500px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 56px 0 96px;
+}
+
+.intro,
+.mainGrid,
+.feedbackPanel,
+.methodPanel {
+  display: grid;
+  gap: 24px;
+}
+
+.intro {
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.5fr);
+  align-items: end;
+  margin-bottom: 32px;
+}
+
+.eyebrow,
+.kicker {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  opacity: 0.68;
+}
+
+.intro h1,
+.panelHeader h2,
+.feedbackPanel h2,
+.methodPanel h2 {
+  margin: 0;
+}
+
+.intro h1 {
+  max-width: 900px;
+  font-size: clamp(2.5rem, 5vw, 5.8rem);
+  line-height: 0.96;
+  letter-spacing: -0.055em;
+}
+
+.lead {
+  max-width: 900px;
+  margin: 24px 0 0;
+  font-size: clamp(1rem, 1.5vw, 1.28rem);
+  line-height: 1.65;
+  opacity: 0.78;
+}
+
+.statusCard,
+.controls,
+.mapPanel,
+.outputPanel,
+.candidatesSection,
+.feedbackPanel,
+.methodPanel {
+  border: 1px solid rgba(127, 127, 127, 0.24);
+  background: rgba(127, 127, 127, 0.035);
+  border-radius: 24px;
+}
+
+.statusCard {
+  padding: 22px;
+}
+
+.statusCard span,
+.selectedRoute span,
+.metricGrid span {
+  display: block;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.58;
+}
+
+.statusCard strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.22rem;
+}
+
+.statusCard p {
+  margin: 10px 0 0;
+  line-height: 1.55;
+  opacity: 0.7;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.controls label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.controls select,
+.controls input[type="range"] {
+  width: 100%;
+}
+
+.controls select {
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+}
+
+.rangeControl > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rangeControl small {
+  font-weight: 400;
+  line-height: 1.4;
+  opacity: 0.56;
+}
+
+.mainGrid {
+  grid-template-columns: minmax(0, 1.6fr) minmax(340px, 0.72fr);
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.mapPanel,
+.outputPanel,
+.candidatesSection,
+.feedbackPanel,
+.methodPanel {
+  padding: 24px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.panelHeader h2,
+.feedbackPanel h2,
+.methodPanel h2 {
+  font-size: clamp(1.5rem, 2.4vw, 2.3rem);
+  letter-spacing: -0.035em;
+}
+
+.panelHeader p:not(.kicker) {
+  max-width: 760px;
+  margin: 10px 0 0;
+  line-height: 1.55;
+  opacity: 0.66;
+}
+
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.headerActions button,
+.candidateCards button {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 15px;
+  background: currentColor;
+  cursor: pointer;
+}
+
+.headerActions button::first-line,
+.candidateCards button::first-line {
+  color: Canvas;
+}
+
+.headerActions button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.secondaryButton {
+  background: transparent !important;
+  border: 1px solid rgba(127, 127, 127, 0.28) !important;
+  color: inherit !important;
+}
+
+.graphWrap {
+  width: 100%;
+  margin-top: 18px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(127, 127, 127, 0.035);
+}
+
+.graphWrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 390px;
+}
+
+.baseEdge {
+  stroke: currentColor;
+  stroke-width: 1.2;
+  opacity: 0.12;
+}
+
+.arrowHead {
+  fill: currentColor;
+  opacity: 0.26;
+}
+
+.candidatePath {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.node,
+.endpointNode {
+  fill: Canvas;
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
+
+.endpointNode {
+  stroke-width: 3;
+}
+
+.nodeId {
+  fill: currentColor;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.nodeLabel {
+  fill: currentColor;
+  font-size: 10px;
+  opacity: 0.58;
+}
+
+.activeObject {
+  fill: currentColor;
+  stroke: Canvas;
+  stroke-width: 4;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  margin-top: 14px;
+  font-size: 0.78rem;
+  opacity: 0.64;
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legendRoute,
+.legendObject {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  background: currentColor;
+  border-radius: 99px;
+}
+
+.legendObject {
+  width: 9px;
+  height: 9px;
+}
+
+.outputPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metricGrid > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(127, 127, 127, 0.17);
+  border-radius: 14px;
+}
+
+.metricGrid strong {
+  display: block;
+  margin-top: 7px;
+  font-size: 1.3rem;
+}
+
+.selectedRoute {
+  padding: 17px;
+  border-radius: 16px;
+  background: rgba(127, 127, 127, 0.07);
+}
+
+.selectedRoute strong {
+  display: block;
+  margin: 9px 0;
+  line-height: 1.45;
+}
+
+.selectedRoute small {
+  line-height: 1.5;
+  opacity: 0.62;
+}
+
+.signalList h3 {
+  margin: 0 0 12px;
+  font-size: 0.94rem;
+}
+
+.signalRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(80px, 1.4fr) 38px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 0.78rem;
+}
+
+.signalRow > div {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(127, 127, 127, 0.12);
+}
+
+.signalRow i {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  border-radius: inherit;
+}
+
+.signalRow strong {
+  text-align: right;
+}
+
+.emptyState {
+  padding: 28px 4px;
+  line-height: 1.6;
+  opacity: 0.66;
+}
+
+.candidatesSection {
+  margin-bottom: 24px;
+}
+
+.candidateCards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.candidateCards article {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(127, 127, 127, 0.18);
+  border-radius: 18px;
+}
+
+.topCandidate {
+  border-width: 2px !important;
+}
+
+.candidateRank {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.78rem;
+}
+
+.candidateCards h3 {
+  margin: 18px 0;
+  min-height: 68px;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.candidateCards dl {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.candidateCards dl div {
+  padding: 9px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.055);
+}
+
+.candidateCards dt {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.55;
+}
+
+.candidateCards dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.candidateCards button {
+  margin-top: auto;
+  width: 100%;
+  color: inherit;
+}
+
+.feedbackPanel {
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.75fr);
+  margin-bottom: 24px;
+}
+
+.feedbackPanel p {
+  line-height: 1.55;
+}
+
+.feedbackNote {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(127, 127, 127, 0.17);
+  opacity: 0.68;
+}
+
+.methodPanel {
+  grid-template-columns: minmax(220px, 0.45fr) minmax(0, 1.55fr);
+}
+
+.methodPanel ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: method;
+}
+
+.methodPanel li {
+  position: relative;
+  padding: 18px 18px 18px 52px;
+  border-top: 1px solid rgba(127, 127, 127, 0.16);
+  counter-increment: method;
+}
+
+.methodPanel li::before {
+  content: counter(method, decimal-leading-zero);
+  position: absolute;
+  top: 18px;
+  left: 8px;
+  font-size: 0.72rem;
+  opacity: 0.45;
+}
+
+.methodPanel li strong,
+.methodPanel li span {
+  display: block;
+}
+
+.methodPanel li span {
+  margin-top: 6px;
+  line-height: 1.5;
+  opacity: 0.64;
+}
+
+@media (max-width: 1100px) {
+  .controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mainGrid,
+  .feedbackPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .candidateCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    width: min(100% - 20px, 1500px);
+    padding-top: 32px;
+  }
+
+  .intro,
+  .methodPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .controls,
+  .candidateCards,
+  .methodPanel ol {
+    grid-template-columns: 1fr;
+  }
+
+  .mapPanel,
+  .outputPanel,
+  .candidatesSection,
+  .feedbackPanel,
+  .methodPanel {
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .panelHeader {
+    display: grid;
+  }
+
+  .graphWrap svg {
+    min-height: 310px;
+  }
+
+  .nodeLabel {
+    display: none;
+  }
+
+  .candidateCards h3 {
+    min-height: 0;
+  }
+}
