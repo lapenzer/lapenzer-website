@@ -8,6 +8,7 @@
     "build": "next build",
     "build:preview": "node scripts/build-preview.mjs",
     "check:models": "node scripts/check-models.mjs",
+    "check:rpa": "node --experimental-strip-types scripts/check-rpa-v3.mjs",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint ."
   },

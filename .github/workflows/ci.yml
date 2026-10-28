@@ -15,6 +15,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run check:models
+      - run: npm run check:rpa
       - run: npm run build
       - name: Test UZUSKE download
         run: |
