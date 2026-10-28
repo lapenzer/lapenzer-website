@@ -16,6 +16,9 @@ jobs:
       - run: npm run lint
       - run: npm run check:models
       - run: npm run check:rpa
+      - run: npm run check:rpa:framework
+      - run: npm run test:backend
+      - run: python3 -m py_compile backend/rpa_core.py backend/rpa_api.py
       - run: npm run build
       - name: Test UZUSKE download
         run: |

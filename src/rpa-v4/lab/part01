@@ -1,0 +1,82 @@
+    loadGoogleMaps(key).then(() => {
+      if (!mapEl.current || !window.google?.maps) return;
+      const center = { lat: 44.2312, lng: -76.4860 };
+      googleMap.current = new window.google.maps.Map(mapEl.current, { center, zoom: 13, mapTypeControl: true, streetViewControl: false, fullscreenControl: true });
+      if (searchEl.current && window.google.maps.places) { const ac = new window.google.maps.places.Autocomplete(searchEl.current); ac.bindTo("bounds", googleMap.current); ac.addListener("place_changed", () => { const place = ac.getPlace(); if (place.geometry?.location) { googleMap.current.panTo(place.geometry.location); googleMap.current.setZoom(14); } }); }
+      setLiveStatus("Google Maps initialized. Pan/zoom/search, then use the visible area to build a provider-derived route graph.");
+    }).catch((error) => setLiveStatus(error instanceof Error ? error.message : "Google Maps failed to initialize."));
+  }, [mapSource]);
+
+  const currentId = history[history.length - 1];
+
+  useEffect(() => {
+    if (mapSource !== "google" || !googleMap.current || !window.google?.maps) return;
+    googleOverlays.current.forEach((o) => o.setMap?.(null)); googleOverlays.current = [];
+    graph.nodes.forEach((n) => { if (n.lat == null || n.lon == null) return; const marker = new window.google.maps.Marker({ map: googleMap.current, position: { lat: n.lat, lng: n.lon }, title: n.id }); marker.addListener("click", () => setSelectedNode(n.id)); googleOverlays.current.push(marker); });
+    const trail = history.map((id) => graph.nodes.find((n) => n.id === id)).filter((n): n is RpaNode => Boolean(n?.lat != null && n?.lon != null)).map((n) => ({ lat: n.lat!, lng: n.lon! }));
+    if (trail.length > 1) googleOverlays.current.push(new window.google.maps.Polyline({ map: googleMap.current, path: trail, geodesic: true, strokeOpacity: 0.95, strokeWeight: 5 }));
+    if (liveTopPath.length > 1) googleOverlays.current.push(new window.google.maps.Polyline({ map: googleMap.current, path: liveTopPath, geodesic: true, strokeOpacity: 0.95, strokeWeight: 6 }));
+    latest?.beam.slice(0, 3).forEach((beam) => { const path = beam.nodes.map((id) => graph.nodes.find((n) => n.id === id)).filter((n): n is RpaNode => Boolean(n?.lat != null && n?.lon != null)).map((n) => ({ lat: n.lat!, lng: n.lon! })); if (path.length > 1) googleOverlays.current.push(new window.google.maps.Polyline({ map: googleMap.current, path, geodesic: true, strokeOpacity: Math.max(0.2, beam.conditionalWeight), strokeWeight: 2 + 5 * beam.conditionalWeight })); });
+  }, [mapSource, graph, history, latest, liveTopPath]);
+
+  useEffect(() => {
+    if (mapSource !== "google" || !latest?.topNext || !currentId) { setLiveTopPath([]); return; }
+    const origin = graph.nodes.find((n) => n.id === currentId), destination = graph.nodes.find((n) => n.id === latest.topNext);
+    if (!origin?.lat || !origin?.lon || !destination?.lat || !destination?.lon) return;
+    let cancelled = false;
+    fetch("/api/rpa/google/compute-route", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ origin: { lat: origin.lat, lon: origin.lon }, destination: { lat: destination.lat, lon: destination.lon }, travelMode: domain === "pedestrian" ? "WALK" : "DRIVE" }) }).then((r) => r.json()).then((payload) => { if (cancelled) return; const encoded = payload.routes?.[0]?.polyline?.encodedPolyline; setLiveTopPath(encoded ? decodeGooglePolyline(encoded) : []); }).catch(() => { if (!cancelled) setLiveTopPath([]); });
+    return () => { cancelled = true; };
+  }, [mapSource, latest?.topNext, currentId, graph, domain]);
+
+  const buildLiveGraph = useCallback(async () => {
+    if (!googleMap.current) { setLiveStatus("Initialize Google Maps first."); return; }
+    const bounds = googleMap.current.getBounds?.(); if (!bounds) { setLiveStatus("Map bounds are not ready yet."); return; }
+    const ne = bounds.getNorthEast(), sw = bounds.getSouthWest(), count = Math.min(targetNodes, userMaxNodes, SYSTEM_NODE_CAP, LIVE_PROVIDER_NODE_CAP), rng = (() => { let s = seed >>> 0; return () => { s = (1664525 * s + 1013904223) >>> 0; return s / 4294967296; }; })();
+    const nodes = Array.from({ length: count }, (_, i) => ({ id: `M${String(i + 1).padStart(2, "0")}`, lat: sw.lat() + (ne.lat() - sw.lat()) * rng(), lon: sw.lng() + (ne.lng() - sw.lng()) * rng() }));
+    setLiveStatus(`Requesting Google Routes API matrix for ${count} sampled routable locations…`);
+    try {
+      const response = await fetch("/api/rpa/google/route-matrix", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nodes, travelMode: domain === "pedestrian" ? "WALK" : domain === "air" ? "DRIVE" : "DRIVE" }) });
+      const payload = await response.json(); if (!response.ok) throw new Error(payload.error ?? `Routes API returned ${response.status}`);
+      const next = graphFromRouteMatrix({ nodes, matrix: payload.matrix, seed, domain, providerTimestamp: payload.timestamp }); setGraph(next); setSuite(null); clearRun(); setLiveDataTimestamp(payload.timestamp); setSelectedNode(next.nodes[0]?.id ?? null); setLiveStatus(`Provider-derived routable-location graph ready: ${next.nodes.length} sampled locations, ${next.edges.length} directed feasible route-matrix links. This is not represented as a complete street-intersection topology. Data source: Google Routes API.`);
+    } catch (error) { setLiveStatus(`Live Map unavailable: ${error instanceof Error ? error.message : "route provider failed"}. Switch explicitly to Synthetic map if needed.`); }
+  }, [targetNodes, userMaxNodes, seed, domain, clearRun]);
+
+  const onUpload = useCallback(async (file: File | undefined) => {
+    if (!file) return; const text = await file.text(), parsed = parseUploadedText(file.name, text); setUploadReport(parsed.validation);
+    if (parsed.validation.errors.length) { setUploadMessage(`Upload rejected: ${parsed.validation.errors.join(" ")}`); return; }
+    if (parsed.graph) { setGraph(parsed.graph); setMapSource("imported"); setDomain("imported"); setSuite(null); clearRun(); setSelectedNode(parsed.graph.nodes[0]?.id ?? null); setUploadMessage(`Imported graph accepted: ${parsed.graph.nodes.length} nodes / ${parsed.graph.edges.length} edges.`); }
+    else if (parsed.trajectories.length) setUploadMessage(`Validated ${parsed.trajectories.length} trajectories. They are eligible for challenger training after graph-state mapping; no performance improvement is claimed until held-out evaluation beats the incumbent.`);
+    else setUploadMessage("File parsed, but no usable graph or trajectory records were found.");
+  }, [clearRun]);
+
+  const selectedNodeObject = graph.nodes.find((n) => n.id === selectedNode) ?? null;
+  const selectedCandidateObject = latest?.candidates.find((c) => c.node === selectedCandidate) ?? latest?.candidates[0] ?? null;
+  const stats = useMemo(() => evaluationFromSnapshots(snapshots.slice(0, outcomes.length), outcomes), [snapshots, outcomes]);
+  const drift = useMemo(() => safeAdaptationSummary(residuals), [residuals]);
+  const chartCatalog = useMemo(() => {
+    const truthDest = truthRef.current?.destination;
+    const destinationProb = truthDest ? snapshots.map((s) => s.destinationPosterior.find((d) => d.id === truthDest)?.probability ?? 0) : [];
+    const destinationTop1 = truthDest ? snapshots.map((s) => s.destinationPosterior[0]?.id === truthDest ? 1 : 0) : [];
+    const destinationTop3 = truthDest ? snapshots.map((s) => s.destinationPosterior.slice(0, 3).some((d) => d.id === truthDest) ? 1 : 0) : [];
+    const nodeVisits = graph.nodes.map((n) => history.filter((id) => id === n.id).length);
+    const edgeUsage = graph.edges.map((e) => history.slice(0, -1).reduce((count, n, i) => count + (n === e.from && history[i + 1] === e.to ? 1 : 0), 0));
+    const degrees = graph.nodes.map((n) => graph.edges.filter((e) => e.from === n.id || e.to === n.id).length);
+    const centrality = graph.nodes.map((n) => n.centrality ?? 0);
+    const nodeWeights = graph.nodes.map((n) => nodeAttractiveness(n));
+    const edgeWeights = graph.edges.map((e) => e.distanceKm);
+    const speeds = observations.map((o) => o.speed).filter((v): v is number => v != null && Number.isFinite(v));
+    const etaP10 = snapshots.map((s) => s.beam[0]?.etaMinutes[0]).filter((v): v is number => Number.isFinite(v));
+    const etaP50 = snapshots.map((s) => s.beam[0]?.etaMinutes[1]).filter((v): v is number => Number.isFinite(v));
+    const etaP90 = snapshots.map((s) => s.beam[0]?.etaMinutes[2]).filter((v): v is number => Number.isFinite(v));
+    const top1Series = residuals.map((_, i) => outcomes.slice(0, i + 1).reduce((c, y, j) => c + (snapshots[j]?.topNext === y ? 1 : 0), 0) / (i + 1));
+    const top3Series = residuals.map((_, i) => outcomes.slice(0, i + 1).reduce((c, y, j) => c + (snapshots[j]?.candidates.slice(0, 3).some((x) => x.node === y) ? 1 : 0), 0) / (i + 1));
+    return [
+      ["Destination posterior over time", destinationProb], ["Destination entropy", snapshots.map((s) => -s.destinationPosterior.reduce((acc, d) => d.probability > 0 ? acc + d.probability * Math.log(d.probability) : acc, 0))], ["Next-node Top-1", top1Series], ["Next-node Top-3", top3Series], ["Destination Top-1", destinationTop1], ["Destination Top-3", destinationTop3], ["NLL", residuals.map((r) => r.surprise)], ["Brier score", residuals.map((r) => r.brier)], ["ECE", residuals.map((_, i) => evaluationFromSnapshots(snapshots.slice(0, i + 1), outcomes.slice(0, i + 1)).ece)], ["Reliability diagram", snapshots.slice(0, outcomes.length).map((s) => s.confidence)], ["Candidate recall", residuals.map((_, i) => evaluationFromSnapshots(snapshots.slice(0, i + 1), outcomes.slice(0, i + 1)).candidateRecall)], ["Prediction-set coverage", residuals.map((_, i) => evaluationFromSnapshots(snapshots.slice(0, i + 1), outcomes.slice(0, i + 1)).conformalCoverage)], ["Conformal set size", snapshots.map((s) => s.conformalSet.length)], ["Abstention rate", snapshots.map((_, i) => snapshots.slice(0, i + 1).filter((s) => s.abstain).length / (i + 1))], ["Risk-coverage curve", snapshots.map((s) => s.abstain ? 0 : 1 - s.entropy / Math.max(Math.log(Math.max(2, s.candidates.length)), 1e-9))], ["Route overlap", residuals.map((_, i) => snapshots[i]?.beam[0]?.nodes.includes(outcomes[i]) ? 1 : 0)], ["Geometric error", residuals.map((r) => r.spatialResidualMeters).filter((v): v is number => v != null)], ["ETA P10", etaP10], ["ETA P50", etaP50], ["ETA P90", etaP90], ["Node visitation", nodeVisits], ["Transition heatmap", edgeUsage], ["Node weights", nodeWeights], ["Edge weights", edgeWeights], ["Degree distribution", degrees], ["Centrality", centrality], ["Trajectory length", history.length ? [history.length] : []], ["Speed", speeds], ["Turn angles", latest?.candidates.map((c) => c.featureV3Map.abs_turn) ?? []], ["Training loss", suite?.neural.trainingLoss ?? []], ["Validation NLL", suite?.neural.validationNll ?? []], ["Model comparison", suite ? [suite.validationNll.conditional_logit, suite.validationNll.gbm, suite.validationNll.neural] : []], ["Beam retained mass", snapshots.map((s) => s.beam.reduce((a, b) => a + Math.exp(b.logProbability), 0))], ["Prediction latency", snapshots.map((s) => s.latencyMs)], ["Confidence", snapshots.map((s) => s.confidence)],
+    ] as Array<[string, number[]]>;
+  }, [snapshots, residuals, suite, graph, history, observations, outcomes, latest]);
+
+  const editNodeWeight = useCallback((value: number) => {
+    if (!selectedNode) return; setGraph((current) => ({ ...current, graphVersion: `${current.graphVersion}-edit`, nodes: current.nodes.map((n) => n.id === selectedNode ? { ...n, attractionOverride: Math.max(1e-6, value), weightProvenance: { method: "direct", source: "user graph-lab edit", updatedAt: new Date().toISOString(), units: "positive attraction multiplier", missing: false, imputed: false } } : n) })); setSuite(null);
+  }, [selectedNode]);
+
+  const addGraphNode = useCallback(() => {

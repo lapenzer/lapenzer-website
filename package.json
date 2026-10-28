@@ -1,16 +1,24 @@
 {
   "name": "lapenzer-website",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
-  "engines": {"node": ">=22.0.0"},
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "next build",
     "build:preview": "node scripts/build-preview.mjs",
     "check:models": "node scripts/check-models.mjs",
     "check:rpa": "node --experimental-strip-types scripts/check-rpa-v3.mjs",
+    "check:rpa:framework": "npm run rpa:assemble && node --experimental-strip-types scripts/check-rpa-framework-v4.mjs",
+    "test:backend": "python -m unittest backend.test_rpa_backend -v",
     "start": "next start -H 0.0.0.0 -p 3000",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "rpa:assemble": "node scripts/assemble-rpa-v4.mjs",
+    "predev": "npm run rpa:assemble",
+    "prelint": "npm run rpa:assemble",
+    "prebuild": "npm run rpa:assemble"
   },
   "dependencies": {
     "framer-motion": "^12.23.24",

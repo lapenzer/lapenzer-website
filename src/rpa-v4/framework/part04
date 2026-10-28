@@ -1,0 +1,71 @@
+      const [no, mo, vo] = adam(w2[h], gW2[h] * inv, mW2[h], vW2[h], lr); w2[h] = no; mW2[h] = mo; vW2[h] = vo;
+    }
+    const [nbo, mbo, vbo] = adam(b2, gB2 * inv, mB2, vB2, lr); b2 = nbo; mB2 = mbo; vB2 = vbo;
+    const currentModel = tempModel(), valNll = modelNll(validationGroups, (x) => scoreNeural(currentModel, x)); trainingLoss.push(loss * inv); validationNll.push(valNll);
+    if (valNll + 1e-5 < bestNll) { bestNll = valNll; best = { w1: w1.map((r) => [...r]), b1: [...b1], w2: [...w2], b2 }; patience = 0; } else patience += 1;
+    if (patience >= 18) break;
+  }
+  w1 = best.w1; b1 = best.b1; w2 = best.w2; b2 = best.b2;
+  const base: NeuralRankerModel = { version: "neural-v4", seed, inputSize, hiddenSize, w1, b1, w2, b2, standardizer, lambda, temperature: 1, epochs: trainingLoss.length, trainingLoss, validationNll, bestValidationNll: bestNll, status: "trained" }, temperature = fitTemperatureV4(validationGroups, (x) => scoreNeural(base, x));
+  return { ...base, temperature, version: `neural-v4-${hashText(`${seed}:${hiddenSize}:${bestNll}:${temperature}`)}` };
+}
+
+export function neuralFeatureAttribution(model: NeuralRankerModel, xRaw: number[]): number[] {
+  if (model.status !== "trained") return xRaw.map(() => 0);
+  const f = forwardNeural(model, xRaw), grad = Array(model.inputSize).fill(0);
+  for (let h = 0; h < model.hiddenSize; h += 1) if (f.pre[h] > 0) for (let j = 0; j < model.inputSize; j += 1) grad[j] += model.w2[h] * model.w1[h][j] / Math.max(model.standardizer.scale[j], 1e-6);
+  return xRaw.map((v, i) => finite(v * grad[i]));
+}
+
+export function neuralGradientCheck(model: NeuralRankerModel, x: number[], epsilon = 1e-5): number {
+  if (model.status !== "trained") return 0;
+  const analytic = neuralFeatureAttribution(model, x).map((v, i) => Math.abs(x[i]) > 1e-9 ? v / x[i] : 0); let maxErr = 0;
+  for (let i = 0; i < Math.min(x.length, 12); i += 1) { const plus = [...x], minus = [...x]; plus[i] += epsilon; minus[i] -= epsilon; const numeric = (scoreNeural(model, plus) - scoreNeural(model, minus)) / (2 * epsilon); maxErr = Math.max(maxErr, Math.abs(numeric - analytic[i])); }
+  return maxErr;
+}
+
+export function trainModelSuite(graph: RpaGraph, trajectories: Trajectory[], destinations: NodeId[], adapter: DomainAdapter, seed = 51): ModelSuite {
+  const sorted = [...trajectories].sort((a, b) => a.day - b.day), n = sorted.length, trainEnd = Math.floor(n * 0.6), valEnd = Math.floor(n * 0.75), train = sorted.slice(0, trainEnd), validation = sorted.slice(trainEnd, valEnd), conditional = trainRpaModel(graph, sorted, destinations, adapter);
+  const trainGroups = forwardTrainingGroups(graph, train, destinations, adapter), trainStats = fitTransitionStats(graph, train), valGroups = groupsFromStats(graph, trainStats, validation, destinations, adapter), gbm = trainGbmRanker(trainGroups, valGroups, seed + 1), neural = trainNeuralRanker(trainGroups, valGroups, seed + 2), irl = trainMaxEntIrl(graph, train, seed + 3);
+  const conditionalNll = conditional.validation?.nll ?? Infinity, validationNll = { conditional_logit: conditionalNll, gbm: gbm.validationNll, neural: neural.bestValidationNll };
+  const champion = (Object.entries(validationNll) as Array<[keyof typeof validationNll, number]>).sort((a, b) => a[1] - b[1])[0]?.[0] ?? "conditional_logit";
+  return { conditional, gbm, neural, irl, champion, validationNll, featureSchemaVersion: "rpa_v3_18+rpa_v4_context", trainedAt: new Date().toISOString(), seed };
+}
+
+export function evaluateCandidatesV4(args: { graph: RpaGraph; suite: ModelSuite; history: NodeId[]; context: PredictionContext; stateHypotheses?: StateHypothesis[]; matrixConfig?: MatrixConfig; seed?: number }): CandidateV4[] {
+  const { graph, suite, history, context } = args, base = predictNext(suite.conditional, history, context), provenance = candidateProvenance(graph, suite.conditional.stats, history, suite.conditional, context, args.seed ?? suite.seed);
+  const current = history[history.length - 1]; [...irlNextDistribution(graph, current, suite.irl).entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([node]) => { const set = provenance.get(node) ?? new Set<CandidateSource>(); set.add("irl"); provenance.set(node, set); });
+  const rowsByNode = new Map(base.candidates.map((r) => [r.node, r])), allRows = [...provenance.keys()].map((node) => rowsByNode.get(node)).filter((r): r is CandidateRow => Boolean(r));
+  const stateConfidence = args.stateHypotheses?.[0]?.probability ?? 1, costs = allRows.map((r) => generalizedResistance(dynamicMatrices(r.edge as RpaEdge, nodeById(graph, r.node), { stress: context.stress }, args.matrixConfig ?? DEFAULT_MATRIX_CONFIG))), condLogits = allRows.map((r) => r.logit ?? logSafe(r.probability ?? 1e-9)), analyses = allRows.map((row, i) => {
+    const c = contextFeatures(graph, row, provenance.get(row.node) ?? new Set(["graph"]), stateConfidence, base.destinationPosterior.entropy, context, costs), x = [...row.features, ...c.values], analyticalLogit = 0.9 * row.featureMap.lp_o3 + 0.5 * row.featureMap.cos_momentum + 0.7 * row.featureMap.lp_dest + 0.35 * Math.log(Math.max(c.attractiveness, 1e-9)) - 0.65 * c.resistance, gbmLogit = suite.gbm.status === "trained" ? scoreGbm(suite.gbm, x) : 0, neuralLogit = suite.neural.status === "trained" ? scoreNeural(suite.neural, x) : 0;
+    return { row, c, x, analyticalLogit, conditionalLogit: condLogits[i], gbmLogit, neuralLogit };
+  });
+  const pa = stableSoftmax(analyses.map((a) => a.analyticalLogit)), pc = stableSoftmax(analyses.map((a) => a.conditionalLogit), suite.conditional.ranker?.temperature ?? 1), pg = stableSoftmax(analyses.map((a) => a.gbmLogit), suite.gbm.temperature), pn = stableSoftmax(analyses.map((a) => a.neuralLogit), suite.neural.temperature), champ = suite.champion, pChamp = champ === "neural" ? pn : champ === "gbm" ? pg : pc;
+  return analyses.map((a, i) => ({ node: a.row.node, edge: a.row.edge as RpaEdge, sources: [...(provenance.get(a.row.node) ?? new Set<CandidateSource>(["graph"]))], featureV3: [...a.row.features], featureV3Map: { ...a.row.featureMap }, contextFeatures: a.c.values, contextMap: a.c.map, matrices: a.c.matrices, nodeAttractiveness: a.c.attractiveness, resistance: a.c.resistance, analyticalLogit: a.analyticalLogit, conditionalLogit: a.conditionalLogit, gbmLogit: a.gbmLogit, neuralLogit: a.neuralLogit, probabilities: { analytical: pa[i], conditionalLogit: pc[i], gbm: pg[i], neural: pn[i], champion: pChamp[i] }, champion: champ })).sort((a, b) => b.probabilities.champion - a.probabilities.champion);
+}
+
+export function destinationPosteriorWithUnknown(model: RpaModel, history: NodeId[], unknownPrior = 0.08): Array<{ id: NodeId | typeof OTHER_UNKNOWN; probability: number }> {
+  const base = destinationPosterior(model.graph, model.stats, history, model.destinations), knownMass = 1 - clamp(unknownPrior, 0.01, 0.45);
+  const weighted = [...base.probs.entries()].map(([id, p]) => { const node = (model.graph.nodes.find((n) => n.id === id) ?? { id, x: 0, y: 0 }) as RpaNode; return [id, p * nodeAttractiveness(node)] as const; });
+  const z = weighted.reduce((s, [, v]) => s + v, 0) || 1, known = weighted.map(([id, v]) => ({ id, probability: (v / z) * knownMass }));
+  return [...known, { id: OTHER_UNKNOWN, probability: 1 - known.reduce((s, d) => s + d.probability, 0) }].sort((a, b) => b.probability - a.probability);
+}
+
+export function monteCarloRollouts(args: { graph: RpaGraph; suite: ModelSuite; history: NodeId[]; context: PredictionContext; samples?: number; horizon?: number; seed?: number }): NodeId[][] {
+  const samples = args.samples ?? 200, horizon = args.horizon ?? 5, rng = seededRandom(args.seed ?? args.suite.seed + 1000), routes: NodeId[][] = [];
+  for (let s = 0; s < samples; s += 1) { const path = [...args.history]; for (let h = 0; h < horizon; h += 1) { const candidates = evaluateCandidatesV4({ graph: args.graph, suite: args.suite, history: path, context: args.context, seed: (args.seed ?? 1) + s * 97 + h }); if (!candidates.length) break; const idx = weightedSample(candidates.map((c) => c.probabilities.champion), rng), next = candidates[idx].node; if (path.includes(next)) break; path.push(next); } routes.push(path); }
+  return routes;
+}
+
+export function futureOccupancyFromRollouts(routes: NodeId[][], historyLength: number): Array<{ nodeId: NodeId; horizon: number; probability: number }> {
+  const counts = new Map<string, number>(), n = Math.max(1, routes.length), maxH = routes.reduce((m, r) => Math.max(m, r.length - historyLength), 0);
+  for (const route of routes) for (let h = 1; h <= maxH; h += 1) { const node = route[historyLength - 1 + h]; if (node) counts.set(`${h}|${node}`, (counts.get(`${h}|${node}`) ?? 0) + 1); }
+  return [...counts.entries()].map(([key, count]) => { const [h, nodeId] = key.split("|"); return { nodeId, horizon: Number(h), probability: count / n }; }).sort((a, b) => a.horizon - b.horizon || b.probability - a.probability);
+}
+
+export function makePredictionSnapshot(args: { graph: RpaGraph; suite: ModelSuite; history: NodeId[]; context: PredictionContext; observations: Observation[]; stateHypotheses?: StateHypothesis[]; seed?: number; abstainThreshold?: number }): StoredPrediction {
+  const started = typeof performance !== "undefined" ? performance.now() : Date.now(), candidates = evaluateCandidatesV4({ graph: args.graph, suite: args.suite, history: args.history, context: args.context, stateHypotheses: args.stateHypotheses, seed: args.seed }), base = predictNext(args.suite.conditional, args.history, args.context), beams = beamSearch(args.suite.conditional, args.history, args.context, undefined, 4, 7), rollouts = monteCarloRollouts({ graph: args.graph, suite: args.suite, history: args.history, context: args.context, samples: 180, horizon: 5, seed: args.seed ?? args.suite.seed }), occupancy = futureOccupancyFromRollouts(rollouts, args.history.length), probs = candidates.map((c) => c.probabilities.champion), confidence = probs[0] ?? 0, ent = entropy(probs), normalizedEntropy = probs.length > 1 ? ent / Math.log(probs.length) : 0, threshold = args.abstainThreshold ?? 0.35, conformal = args.suite.conditional.conformalThreshold == null ? [] : candidates.filter((c) => c.probabilities.champion >= 1 - args.suite.conditional.conformalThreshold!).map((c) => c.node), ended = typeof performance !== "undefined" ? performance.now() : Date.now();
+  return { id: `pred-${Date.now()}-${hashText(args.history.join(">"))}`, timestamp: Date.now(), observationCount: args.observations.length, currentState: args.stateHypotheses ?? [{ nodeId: args.history[args.history.length - 1], probability: 1, distanceMeters: 0, headingCompatibility: 1, likelihood: 1 }], destinationPosterior: destinationPosteriorWithUnknown(args.suite.conditional, args.history), candidates, topNext: candidates[0]?.node ?? null, beam: beams.map((b) => ({ nodes: b.nodes, logProbability: logSafe(b.probability), conditionalWeight: b.conditionalWeight, etaMinutes: b.etaMinutes })), occupancy, confidence, entropy: ent, conformalSet: conformal.length ? conformal : base.conformalSet, abstain: confidence < threshold || normalizedEntropy > 0.92, modelVersion: args.suite.champion === "neural" ? args.suite.neural.version : args.suite.champion === "gbm" ? args.suite.gbm.version : args.suite.conditional.version, graphVersion: args.graph.graphVersion, featureSchemaVersion: args.suite.featureSchemaVersion, randomSeed: args.seed ?? args.suite.seed, latencyMs: ended - started, provenance: [args.graph.provider?.name ?? args.graph.source, "prediction snapshot stored before outcome", `champion:${args.suite.champion}`] };
+}
+
+export function measuredVsExpected(prediction: StoredPrediction, observedNext: NodeId, options?: { measuredDuration?: number; expectedDuration?: number; measuredPosition?: { lat: number; lon: number }; predictedPosition?: { lat: number; lon: number }; measuredHeading?: number; expectedHeading?: number; observedResistance?: number }): ResidualRecord {

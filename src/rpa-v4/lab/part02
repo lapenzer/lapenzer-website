@@ -1,0 +1,61 @@
+    setGraph((current) => { if (current.nodes.length >= Math.min(userMaxNodes, SYSTEM_NODE_CAP)) return current; const id = `U${current.nodes.length + 1}`, node: RpaNode = { id, x: 0.5, y: 0.5, domain, attractionRaw: 1, attractionNormalized: 1, popularity: 0.5, weightProvenance: { method: "direct", source: "graph lab", updatedAt: new Date().toISOString(), units: "index", missing: false, imputed: false } }; return { ...current, nodes: [...current.nodes, node], graphVersion: `${current.graphVersion}-node${current.nodes.length + 1}` }; }); setSuite(null);
+  }, [userMaxNodes, domain]);
+
+  const removeSelectedNode = useCallback(() => { if (!selectedNode || graph.nodes.length <= 1) return; setGraph((g) => ({ ...g, nodes: g.nodes.filter((n) => n.id !== selectedNode), edges: g.edges.filter((e) => e.from !== selectedNode && e.to !== selectedNode), graphVersion: `${g.graphVersion}-rm${selectedNode}` })); setSelectedNode(null); setSuite(null); }, [selectedNode, graph.nodes.length]);
+
+  const editSelectedNodePosition = useCallback((axis: "x" | "y", value: number) => {
+    if (!selectedNode || !Number.isFinite(value)) return; setGraph((g) => ({ ...g, graphVersion: `${g.graphVersion}-move`, nodes: g.nodes.map((n) => n.id === selectedNode ? { ...n, [axis]: value } : n) })); setSuite(null);
+  }, [selectedNode]);
+
+  const addDirectedEdge = useCallback(() => {
+    if (!selectedNode || !edgeTarget || selectedNode === edgeTarget) return; setGraph((g) => { if (g.edges.some((e) => e.from === selectedNode && e.to === edgeTarget)) return g; const a = g.nodes.find((n) => n.id === selectedNode)!, b = g.nodes.find((n) => n.id === edgeTarget)!, distanceKm = Math.max(0.01, Math.hypot(a.x - b.x, a.y - b.y) * 12); return { ...g, graphVersion: `${g.graphVersion}-edge`, edges: [...g.edges, { id: `${selectedNode}>${edgeTarget}`, from: selectedNode, to: edgeTarget, distanceKm, feasible: true, direction: "forward", source: "graph lab", terrain: 0.2, traffic: 0.2, risk: 0.1, logistics: 0, weather: 0, interest: 0.5, asset: 1 }] }; }); setSuite(null);
+  }, [selectedNode, edgeTarget]);
+
+  const exportGraph = useCallback(() => {
+    const blob = new Blob([JSON.stringify({ graph }, null, 2)], { type: "application/json" }), url = URL.createObjectURL(blob), a = document.createElement("a"); a.href = url; a.download = `${graph.graphId}.json`; a.click(); URL.revokeObjectURL(url);
+  }, [graph]);
+
+  const runExperiments = useCallback(() => { setExperimentRows(experimentBatch({ ...generationConfig, targetNodes: Math.min(targetNodes, 20), userMaxNodes: Math.min(userMaxNodes, 20) }, 4, 180)); }, [generationConfig, targetNodes, userMaxNodes]);
+
+  const graphPositions = useMemo(() => new Map(graph.nodes.map((n) => [n.id, graphNodeScreen(graph, n)])), [graph]);
+  const displayTruthDestination = truthComplete ? truthRef.current?.destination : null;
+
+  return <div className={styles.lab}>
+    <header className={styles.topbar}>
+      <div><span className={styles.brand}>LAPENZER RPA</span><span>Production Route Prediction Laboratory</span></div>
+      <div className={styles.statusStrip}><span>{domain.toUpperCase()}</span><span>{graph.source.toUpperCase()}</span><span>{suite ? suite.champion.toUpperCase() : "COLD START"}</span><span>OBS {observations.length}</span><span>SEED {seed}</span><span>{latest ? `${fmt(latest.latencyMs, 1)} ms` : "— ms"}</span></div>
+      <strong className={styles.decision}>Decision support. Not autonomous action.</strong>
+    </header>
+
+    <section className={styles.controlDeck}>
+      <div className={styles.controlGroup}><label>Map source<select value={mapSource} onChange={(e) => { setMapSource(e.target.value as MapSource); clearRun(); }}><option value="synthetic">Synthetic map</option><option value="google">Live Google Map</option><option value="imported">Imported graph</option></select></label><label>Domain<select value={domain} onChange={(e) => { setDomain(e.target.value as ExtendedDomain); setSuite(null); clearRun(); }}>{DOMAINS.map((d) => <option key={d}>{d}</option>)}</select></label></div>
+      <div className={styles.controlGroup}><label>Topology<select value={topology} onChange={(e) => setTopology(e.target.value as GraphTopology)}>{TOPOLOGIES.map((t) => <option key={t}>{t}</option>)}</select></label><label>Direction<select value={direction} onChange={(e) => setDirection(e.target.value as DirectionMode)}><option value="bidirectional">Bidirectional</option><option value="one-way">One-way directed</option></select></label></div>
+      <div className={styles.controlGroup}><label>Target nodes<input type="number" min={1} max={userMaxNodes} value={targetNodes} onChange={(e) => setTargetNodes(Math.max(1, Math.min(Number(e.target.value), userMaxNodes)))} /></label><label>User max<input type="number" min={targetNodes} max={SYSTEM_NODE_CAP} value={userMaxNodes} onChange={(e) => setUserMaxNodes(Math.max(targetNodes, Math.min(SYSTEM_NODE_CAP, Number(e.target.value))))} /></label><small>System cap: {SYSTEM_NODE_CAP}. Live provider cap: {LIVE_PROVIDER_NODE_CAP}.</small></div>
+      <div className={styles.controlGroup}><label>Density<input type="range" min="0.05" max="0.9" step="0.01" value={density} onChange={(e) => setDensity(Number(e.target.value))} /><b>{density.toFixed(2)}</b></label><label>Seed<input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 1)} /></label></div>
+      <div className={styles.actions}><button onClick={regenerate} disabled={mapSource === "google"}>Generate graph</button><button onClick={() => train()}>Train models</button><button onClick={startSimulation}>Start unknown-destination RPA</button><button onClick={() => setRunning((r) => !r)} disabled={!history.length}>{running ? "Pause" : "Play"}</button><button onClick={advance} disabled={!history.length || truthComplete}>Step</button></div>
+    </section>
+
+    {mapSource === "google" && <section className={styles.liveTools}><div><input ref={searchEl} placeholder="Search a place or location" aria-label="Google Maps place search" /><button onClick={buildLiveGraph}>Use visible area + build route matrix graph</button></div><p>{liveStatus}</p>{liveDataTimestamp && <small>Active live route data timestamp: {liveDataTimestamp}</small>}</section>}
+
+    <section className={styles.workspace}>
+      <aside className={styles.sidePanel}>
+        <h2>Object state</h2>
+        <dl className={styles.kv}><div><dt>Current node</dt><dd>{currentId ?? "—"}</dd></div><div><dt>Observation</dt><dd>{observations.at(-1)?.id ?? "—"}</dd></div><div><dt>Map-match</dt><dd>{pct(latest?.currentState[0]?.probability)}</dd></div><div><dt>Speed</dt><dd>{observations.at(-1)?.speed == null ? "unavailable" : `${fmt(observations.at(-1)?.speed, 1)} m/s`}</dd></div><div><dt>Heading</dt><dd>{observations.at(-1)?.headingDeg == null ? "unavailable" : `${fmt(observations.at(-1)?.headingDeg, 0)}°`}</dd></div><div><dt>Destination</dt><dd className={styles.hidden}>{displayTruthDestination ?? "HIDDEN FROM RPA"}</dd></div></dl>
+        <h2>Graph identity</h2><dl className={styles.kv}><div><dt>graph_id</dt><dd>{graph.graphId}</dd></div><div><dt>fingerprint</dt><dd>{graph.fingerprint}</dd></div><div><dt>nodes / edges</dt><dd>{graph.nodes.length} / {graph.edges.length}</dd></div><div><dt>source</dt><dd>{graph.provider?.name ?? graph.source}</dd></div></dl>
+        <h2>Node weights</h2>{selectedNodeObject ? <div className={styles.nodeInspector}><strong>{selectedNodeObject.id}</strong><p>Attractiveness: {fmt(nodeAttractiveness(selectedNodeObject), 4)}</p><label>Direct override<input type="number" min="0.0001" step="0.1" value={selectedNodeObject.attractionOverride ?? nodeAttractiveness(selectedNodeObject)} onChange={(e) => editNodeWeight(Number(e.target.value))} /></label><label>X / longitude<input type="number" step="0.001" value={selectedNodeObject.x} onChange={(e) => editSelectedNodePosition("x", Number(e.target.value))} /></label><label>Y / latitude<input type="number" step="0.001" value={selectedNodeObject.y} onChange={(e) => editSelectedNodePosition("y", Number(e.target.value))} /></label><dl className={styles.kv}><div><dt>raw</dt><dd>{fmt(selectedNodeObject.attractionRaw)}</dd></div><div><dt>normalized</dt><dd>{fmt(selectedNodeObject.attractionNormalized)}</dd></div><div><dt>centrality</dt><dd>{fmt(selectedNodeObject.centrality)}</dd></div><div><dt>accessibility</dt><dd>{fmt(selectedNodeObject.accessibility)}</dd></div><div><dt>source</dt><dd>{selectedNodeObject.weightProvenance?.source ?? "graph default"}</dd></div><div><dt>updated</dt><dd>{selectedNodeObject.weightProvenance?.updatedAt ?? "—"}</dd></div></dl></div> : <p>Select a node.</p>}
+      </aside>
+
+      <div className={styles.mapColumn}>
+        <div className={styles.mapFrame}>{mapSource === "google" ? <div ref={mapEl} className={styles.googleMap} /> : <svg viewBox="0 0 780 460" className={styles.geoMap} role="img" aria-label="Synthetic geographic map"><rect width="780" height="460" /><g className={styles.terrainLines}>{Array.from({ length: 12 }, (_, i) => <path key={i} d={`M0 ${20 + i * 38} C 190 ${80 + i * 9}, 500 ${-30 + i * 44}, 780 ${40 + i * 34}`} />)}</g>{graph.edges.map((e) => { const a = graphPositions.get(e.from), b = graphPositions.get(e.to); if (!a || !b) return null; return <line key={e.id} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} className={latest?.candidates.some((c) => c.edge.id === e.id) ? styles.candidateEdge : styles.mapEdge} />; })}{graph.nodes.map((n) => { const p = graphPositions.get(n.id)!; const current = currentId === n.id; return <g key={n.id} onClick={() => setSelectedNode(n.id)} className={styles.nodeGroup}><circle cx={p[0]} cy={p[1]} r={current ? 13 : 8} className={current ? styles.currentNode : styles.mapNode} /><text x={p[0] + 10} y={p[1] - 10}>{n.id}</text></g>; })}</svg>}</div>
+        <div className={styles.mapLegend}><span>Observed trail: {history.join(" → ") || "not started"}</span><span>Provider: {graph.provider?.name ?? "synthetic"}</span><span>Destination truth remains isolated until completion.</span></div>
+      </div>
+
+      <aside className={styles.sidePanel}>
+        <h2>Next movement</h2>{latest?.candidates.length ? <><strong className={styles.bigPrediction}>{latest.candidates[0].node} · {pct(latest.candidates[0].probabilities.champion)}</strong><ProbabilityBars rows={latest.candidates.slice(0, 5).map((c) => ({ label: `${c.node} [${c.sources.join(",")}]`, value: c.probabilities.champion }))} /></> : <p>No prediction yet.</p>}
+        <h2>Destination</h2>{latest && <ProbabilityBars rows={latest.destinationPosterior.slice(0, 6).map((d) => ({ label: String(d.id), value: d.probability }))} />}
+        <h2>Uncertainty</h2><dl className={styles.kv}><div><dt>confidence</dt><dd>{pct(latest?.confidence)}</dd></div><div><dt>entropy</dt><dd>{fmt(latest?.entropy)}</dd></div><div><dt>conformal</dt><dd>{latest?.conformalSet.join(", ") || "—"}</dd></div><div><dt>abstention</dt><dd>{latest?.abstain ? "ABSTAIN" : "prediction available"}</dd></div></dl>
+        <h2>Beam + ETA</h2>{latest?.beam.slice(0, 4).map((b) => <div className={styles.beamRow} key={b.nodes.join("-")}><span>{b.nodes.slice(-5).join(" → ")}</span><strong>{pct(b.conditionalWeight)}</strong><small>P10/P50/P90 {b.etaMinutes.map((v) => fmt(v, 1)).join(" / ")} min</small></div>)}
+      </aside>
+    </section>
+
+    <section className={styles.graphWorkspace}>

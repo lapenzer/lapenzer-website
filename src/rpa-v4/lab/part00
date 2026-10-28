@@ -1,0 +1,167 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import styles from "./RPALabV4.module.css";
+import {
+  RPA_V4_CONTEXT_FEATURES,
+  evaluationFromSnapshots,
+  experimentBatch,
+  generateHiddenTruth,
+  generateRandomGraph,
+  graphFromRouteMatrix,
+  legacyCompatibilityManifest,
+  makeDomainAdapterV4,
+  makePredictionSnapshot,
+  mapMatchObservation,
+  measuredVsExpected,
+  neuralFeatureAttribution,
+  nodeAttractiveness,
+  parseUploadedText,
+  pickIndependentDestinations,
+  safeAdaptationSummary,
+  syntheticTrainingSet,
+  trainModelSuite,
+  type DirectionMode,
+  type ExtendedDomain,
+  type GraphGenerationConfig,
+  type GraphTopology,
+  type MapSource,
+  type ModelSuite,
+  type Observation,
+  type RpaGraph,
+  type RpaNode,
+  type StoredPrediction,
+  type UploadValidationReport,
+} from "@/lib/rpaFrameworkV4";
+import type { NodeId } from "@/lib/rpaV3";
+
+declare global {
+  interface Window { google?: any; __lapenzerGoogleMapsPromise?: Promise<void>; }
+}
+
+const SYSTEM_NODE_CAP = 80;
+const LIVE_PROVIDER_NODE_CAP = 20;
+const DOMAINS: ExtendedDomain[] = ["road", "pedestrian", "trail", "forest", "desert", "terrain", "mountain", "marine", "air", "mixed", "abstract", "imported"];
+const TOPOLOGIES: GraphTopology[] = ["connected", "erdos-renyi", "geometric", "grid", "small-world", "scale-free", "tree", "dag", "layered"];
+const fmt = (value: number | null | undefined, digits = 3) => value == null || !Number.isFinite(value) ? "—" : value.toFixed(digits);
+const pct = (value: number | null | undefined, digits = 1) => value == null || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(digits)}%`;
+
+function Sparkline({ values, label }: { values: number[]; label: string }) {
+  if (!values.length) return <div className={styles.emptyChart}>No evaluated observations yet.</div>;
+  const finite = values.filter(Number.isFinite); if (!finite.length) return <div className={styles.emptyChart}>No finite values.</div>;
+  const min = Math.min(...finite), max = Math.max(...finite), span = Math.max(1e-9, max - min), w = 240, h = 72;
+  const points = values.map((v, i) => `${values.length === 1 ? w / 2 : i * w / (values.length - 1)},${h - ((v - min) / span) * (h - 10) - 5}`).join(" ");
+  return <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={label} className={styles.spark}><polyline points={points} fill="none" vectorEffect="non-scaling-stroke" /><line x1="0" x2={w} y1={h - 5} y2={h - 5} /></svg>;
+}
+
+function ProbabilityBars({ rows }: { rows: Array<{ label: string; value: number }> }) {
+  return <div className={styles.bars}>{rows.map((row) => <div className={styles.barRow} key={row.label}><span>{row.label}</span><div><i style={{ width: `${Math.max(0, Math.min(100, row.value * 100))}%` }} /></div><strong>{pct(row.value)}</strong></div>)}</div>;
+}
+
+function loadGoogleMaps(apiKey: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.reject(new Error("Google Maps requires a browser."));
+  if (window.google?.maps) return Promise.resolve();
+  if (window.__lapenzerGoogleMapsPromise) return window.__lapenzerGoogleMapsPromise;
+  window.__lapenzerGoogleMapsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&v=weekly`;
+    script.async = true; script.defer = true;
+    script.onload = () => resolve(); script.onerror = () => reject(new Error("Google Maps JavaScript API failed to load.")); document.head.appendChild(script);
+  });
+  return window.__lapenzerGoogleMapsPromise;
+}
+
+function decodeGooglePolyline(encoded: string): Array<{ lat: number; lng: number }> {
+  const points: Array<{ lat: number; lng: number }> = []; let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let shift = 0, result = 0, byte = 0; do { byte = encoded.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20); const dlat = (result & 1) ? ~(result >> 1) : (result >> 1); lat += dlat;
+    shift = 0; result = 0; do { byte = encoded.charCodeAt(index++) - 63; result |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20); const dlng = (result & 1) ? ~(result >> 1) : (result >> 1); lng += dlng; points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return points;
+}
+
+function graphNodeScreen(graph: RpaGraph, node: RpaNode): [number, number] {
+  if (!graph.nodes.length) return [0, 0];
+  const xs = graph.nodes.map((n) => n.x), ys = graph.nodes.map((n) => n.y), minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  return [50 + ((node.x - minX) / Math.max(1e-9, maxX - minX)) * 680, 40 + ((node.y - minY) / Math.max(1e-9, maxY - minY)) * 380];
+}
+
+function makeObservation(graph: RpaGraph, nodeId: NodeId, index: number, origin: Observation["origin"]): Observation {
+  const n = graph.nodes.find((node) => node.id === nodeId)!;
+  return { id: `obs-${index}-${nodeId}`, timestamp: Date.now() + index * 1000, x: n.x, y: n.y, lat: n.lat, lon: n.lon, speed: null, headingDeg: null, accuracyMeters: origin === "live" ? 25 : 4, origin };
+}
+
+export function RPALabV4() {
+  const [mapSource, setMapSource] = useState<MapSource>("synthetic");
+  const [domain, setDomain] = useState<ExtendedDomain>("road");
+  const [topology, setTopology] = useState<GraphTopology>("connected");
+  const [direction, setDirection] = useState<DirectionMode>("bidirectional");
+  const [targetNodes, setTargetNodes] = useState(12);
+  const [userMaxNodes, setUserMaxNodes] = useState(24);
+  const [density, setDensity] = useState(0.24);
+  const [seed, setSeed] = useState(271828);
+  const [graph, setGraph] = useState<RpaGraph>(() => generateRandomGraph({ targetNodes: 12, userMaxNodes: 24, systemCap: SYSTEM_NODE_CAP, density: 0.24, direction: "bidirectional", topology: "connected", seed: 271828, ensureConnected: true, nodeWeightDistribution: "lognormal", edgeWeightDistribution: "uniform", domain: "road" }));
+  const [suite, setSuite] = useState<ModelSuite | null>(null);
+  const [trainingStatus, setTrainingStatus] = useState("Not trained for this graph");
+  const [history, setHistory] = useState<NodeId[]>([]);
+  const [observations, setObservations] = useState<Observation[]>([]);
+  const truthRef = useRef<{ destination: NodeId; path: NodeId[] } | null>(null);
+  const [truthComplete, setTruthComplete] = useState(false);
+  const [snapshots, setSnapshots] = useState<StoredPrediction[]>([]);
+  const [residuals, setResiduals] = useState<ReturnType<typeof measuredVsExpected>[]>([]);
+  const [outcomes, setOutcomes] = useState<NodeId[]>([]);
+  const [running, setRunning] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<NodeId | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<NodeId | null>(null);
+  const [edgeTarget, setEdgeTarget] = useState<NodeId | "">("");
+  const [liveTopPath, setLiveTopPath] = useState<Array<{ lat: number; lng: number }>>([]);
+  const [replayIndex, setReplayIndex] = useState(-1);
+  const [uploadReport, setUploadReport] = useState<UploadValidationReport | null>(null);
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [experimentRows, setExperimentRows] = useState<ReturnType<typeof experimentBatch>>([]);
+  const [liveStatus, setLiveStatus] = useState("Google Maps not initialized.");
+  const [liveDataTimestamp, setLiveDataTimestamp] = useState<string | null>(null);
+  const mapEl = useRef<HTMLDivElement | null>(null), searchEl = useRef<HTMLInputElement | null>(null), googleMap = useRef<any>(null), googleOverlays = useRef<any[]>([]);
+  const latest = replayIndex >= 0 ? snapshots[replayIndex] : snapshots[snapshots.length - 1];
+
+  const generationConfig = useMemo<GraphGenerationConfig>(() => ({ targetNodes, userMaxNodes, systemCap: SYSTEM_NODE_CAP, density, direction, topology, seed, ensureConnected: true, nodeWeightDistribution: "lognormal", edgeWeightDistribution: "uniform", domain }), [targetNodes, userMaxNodes, density, direction, topology, seed, domain]);
+
+  const clearRun = useCallback(() => { setRunning(false); setHistory([]); setObservations([]); setSnapshots([]); setResiduals([]); setOutcomes([]); setTruthComplete(false); truthRef.current = null; setReplayIndex(-1); }, []);
+
+  const regenerate = useCallback(() => {
+    const next = generateRandomGraph(generationConfig, new Set([graph.fingerprint]));
+    setGraph(next); setSuite(null); setTrainingStatus("Not trained for this graph"); setSelectedNode(next.nodes[0]?.id ?? null); clearRun();
+  }, [generationConfig, graph.fingerprint, clearRun]);
+
+  const train = useCallback((targetGraph = graph) => {
+    setTrainingStatus("Training chronological conditional-logit, GBM and neural challenger models…");
+    const trajectories = syntheticTrainingSet(targetGraph, Math.max(360, targetGraph.nodes.length * 32), targetGraph.seed + 7), destinations = pickIndependentDestinations(targetGraph, Math.min(6, Math.max(3, Math.ceil(targetGraph.nodes.length / 4)))), nextSuite = trainModelSuite(targetGraph, trajectories, destinations, makeDomainAdapterV4(domain), targetGraph.seed + 19);
+    setSuite(nextSuite); setTrainingStatus(`Trained. Champion: ${nextSuite.champion.replace("_", " ")} · validation NLL ${fmt(nextSuite.validationNll[nextSuite.champion], 4)}`);
+    return nextSuite;
+  }, [graph, domain]);
+
+  const startSimulation = useCallback(() => {
+    const activeSuite = suite ?? train(graph), start = graph.nodes[0]?.id; if (!start || !activeSuite) return;
+    clearRun(); const truth = generateHiddenTruth(graph, start, seed + 2003); truthRef.current = truth; const first = makeObservation(graph, start, 0, mapSource === "google" ? "live" : "synthetic"), state = mapMatchObservation(graph, first);
+    const snap = makePredictionSnapshot({ graph, suite: activeSuite, history: [start], context: { stress: 0.45, nowDay: 999 }, observations: [first], stateHypotheses: state, seed: seed + 3001 });
+    setHistory([start]); setObservations([first]); setSnapshots([snap]); setReplayIndex(-1); setRunning(true); setTruthComplete(truth.path.length <= 1);
+  }, [suite, train, graph, seed, mapSource, clearRun]);
+
+  const advance = useCallback(() => {
+    const truth = truthRef.current; if (!truth || !suite || !history.length) return;
+    const nextIndex = history.length; if (nextIndex >= truth.path.length) { setRunning(false); setTruthComplete(true); return; }
+    const observedNext = truth.path[nextIndex], previousPrediction = snapshots[snapshots.length - 1], nextHistory = [...history, observedNext], nextObs = makeObservation(graph, observedNext, observations.length, mapSource === "google" ? "live" : "synthetic"), nextObservations = [...observations, nextObs];
+    if (previousPrediction) { setResiduals((r) => [...r, measuredVsExpected(previousPrediction, observedNext)]); setOutcomes((o) => [...o, observedNext]); }
+    setHistory(nextHistory); setObservations(nextObservations);
+    if (nextIndex >= truth.path.length - 1) { setRunning(false); setTruthComplete(true); return; }
+    const state = mapMatchObservation(graph, nextObs, nextObservations[nextObservations.length - 2]);
+    const snap = makePredictionSnapshot({ graph, suite, history: nextHistory, context: { stress: 0.45, nowDay: 999 + nextIndex * 0.001 }, observations: nextObservations, stateHypotheses: state, seed: seed + 3001 + nextIndex });
+    setSnapshots((s) => [...s, snap]);
+  }, [suite, history, snapshots, graph, observations, mapSource, seed]);
+
+  useEffect(() => { if (!running) return; const timer = window.setInterval(advance, 1250); return () => window.clearInterval(timer); }, [running, advance]);
+
+  useEffect(() => {
+    if (mapSource !== "google" || !mapEl.current) return;
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!key) { setLiveStatus("Live Google Map unavailable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not configured. Synthetic mode remains available."); return; }
