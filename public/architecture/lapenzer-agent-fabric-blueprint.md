@@ -273,7 +273,153 @@ The orchestrator must handle timeouts, worker crashes, duplicate delivery, idemp
 
 A task completion claim from an agent is not proof of success. Verification must be based on defined acceptance criteria and observable results.
 
-## 6. Decision Support module
+
+## 6. LAPENZER algorithm and intelligence layer
+
+This is a first-class architectural layer. It hosts domain-specific algorithms as independently versioned services that can be invoked by the orchestrator, Decision Support, external applications or authorized human operators. Each algorithm retains its own data requirements, evaluation methods, model versions and deployment lifecycle.
+
+The catalogue distinguishes working software, prototypes, research frameworks and product features that are not themselves predictive algorithms.
+
+### 6.1 Algorithm service architecture
+
+```mermaid
+flowchart TB
+  CALLERS["Orchestrator / Decision Support / External APIs"]
+  GATE["Algorithm API Gateway"]
+  REG["Algorithm and Model Registry"]
+  POLICY["Identity, Policy and Data-Access Controls"]
+  subgraph SERVICES["INDEPENDENT ALGORITHM SERVICES"]
+    RPA["Route Prediction Service"]
+    FORECAST["Event Forecasting Service"]
+    INFLUENCE["Network Influence Analysis"]
+    CASCADE["Conflict-State Simulation"]
+  end
+  subgraph COMMON["SHARED ANALYTICAL SERVICES"]
+    GRAPH["Graph and Spatiotemporal Data"]
+    FEATURES["Feature and Evidence Engineering"]
+    CAL["Calibration, Evaluation and Drift"]
+    SIM["Simulation and Optimization Runtime"]
+    PROV["Model, Data and Result Provenance"]
+  end
+  STORE["Versioned Data and Artifact Store"]
+  CALLERS --> GATE
+  GATE <--> REG
+  GATE <--> POLICY
+  GATE --> SERVICES
+  SERVICES <--> COMMON
+  COMMON <--> STORE
+  SERVICES --> STORE
+```
+
+Each algorithm service publishes a stable identifier and semantic version, machine-readable input/output schemas, data provenance and freshness requirements, supported domains and exclusions, model dependencies, evaluation metrics, calibration and known limitations, runtime requirements, permissions, and reproducibility records.
+
+An algorithm registry entry is not evidence of operational readiness. Promotion requires documented evaluation, approval and rollback. Algorithm services do not receive unrestricted access to platform tools or environments.
+
+### 6.2 Route Prediction Algorithm (RPA / UZUSKE)
+
+**Architecture role:** Core LAPENZER predictive capability. Expose it as a dedicated route and movement prediction service with domain adapters, not as logic embedded in the Agent Fabric orchestrator.
+
+**Documented implementation and design elements:**
+- Dynamic directed graph representation of nodes, edges and trajectories.
+- Graph/state estimation and map matching from observed positions.
+- Dynamic edge and resistance matrices for distance, terrain, movement, logistics, weather, risk, interest and asset factors.
+- Generalized resistance and context-specific feasibility constraints.
+- First-, second- and third-order Markov transition statistics with discounted backoff.
+- Recency-decayed transition evidence and entity/population shrinkage.
+- Bayesian destination inference and destination-conditioned transition probabilities.
+- Candidate generation using graph search and route alternatives, with feasibility and diversity controls.
+- Contextual candidate ranking using an 18-feature selector, including transition history, momentum, heading, destination progress, weather/context, revisit and backtracking signals.
+- Conditional-logit ranking in the current TypeScript numerical implementation. The broader RPA v4 work also includes tree-based and setwise ranking approaches where supported by that build.
+- Temperature calibration, entropy, Brier/NLL/ECE evaluation and conformal prediction sets.
+- Beam-search multi-step forecasting, route probability and ETA quantile simulation.
+- Domain adapters for road, terrain, marine and air contexts.
+- Chronological evaluation, leakage controls, candidate coverage and confidence-aware abstention.
+- APIs and data flows for graph construction, observations, training, evaluation, next-node and beam predictions, model promotion, analytics and feedback/drift monitoring.
+
+**Service output:** Ranked candidate transitions or paths, destination posteriors, uncertainty, ETA ranges, warnings and provenance. The algorithm does not issue movement commands. Consuming applications separately enforce permissions, operational constraints and human authorization.
+
+**Maturity:** A working Python/TypeScript prototype and website-integrated numerical implementation are documented. UZUSKE 1.0 previously demonstrated a working next-node prediction and installable package. RPA v3/v4 work includes broader training, evaluation and API features. This does not establish independent reproduction, production reliability, live-data performance or domain qualification. Historical small-sample aircraft results remain retrospective prototype evidence, not operational accuracy claims.
+
+### 6.3 Event Forecasting and Bayesian Cascade Model
+
+**Architecture role:** A separate probabilistic forecasting service for defined events and possible downstream consequences. It should be available to Decision Support while remaining independent of the agent orchestration core.
+
+**Previously developed prototype components and methods:**
+- Logistic probability estimation.
+- Bayesian updating and evidence fusion.
+- OSINT-derived evidence inputs with source weighting.
+- Market-implied probability inputs, including Polymarket as one signal rather than ground truth.
+- Hazard-rate modelling for time-dependent event likelihood.
+- Consequence graphs representing dependencies and downstream effects.
+- Monte Carlo propagation of uncertain event and consequence states.
+- Probability calibration and evaluation.
+- Expected-value and consequence analysis.
+- A synthetic crisis scenario used for prototype testing.
+
+A 2026 prototype was described as tested with six tests. The associated *Market-Anchored Bayesian Cascade Model* paper documents a 16-equation framework spanning probability fusion, Bayesian updates, logistic and hazard models, consequence networks, Monte Carlo simulation, calibration and expected value. These are prototype/research claims, not evidence of a calibrated forecasting service operating continuously in production.
+
+**Related product boundary:** The Quantified Systems forecasting application is a distinct implementation and brand. Its inspected code retrieves active Polymarket market signals, accepts user-entered probability forecasts, aggregates community forecasts and generates AI decision briefs from supplied inputs. That application is not proof that the separate Bayesian cascade prototype has been integrated or that it independently predicts event probabilities. Any shared portfolio integration should use a documented product/API boundary and retain accurate ownership and maturity attribution.
+
+**Maturity:** Event forecasting prototype and research model. The Quantified Systems application implements market-signal ingestion, forecast submission/history, community aggregation and AI brief generation. Calibration, prospective forecast performance, event-resolution tracking and production integration of the Bayesian cascade model require separate verification.
+
+### 6.4 Aggregate Network Influence Analysis
+
+**Architecture role:** A research and analytical service for estimating changes in aggregate conditions across dynamic networks. It is not an individual-level classification or profiling system.
+
+**Documented framework components:**
+- Dynamic weighted graphs of aggregate communities, regions, narratives and events.
+- Reliability-weighted evidence aggregation.
+- Historical baselines and standardized deviations.
+- First- and second-order temporal differences.
+- Local, temporal and network-exposure variables.
+- Probabilistic logistic components and network diffusion.
+- Change-point and uncertainty-aware ensemble concepts.
+- Entropy, disagreement and explicit abstention.
+- Analyst review and aggregate reporting.
+
+**Maturity:** The inspected paper identifies this as a theoretical framework and explicitly makes no empirical accuracy, causal validity, operational deployment or predictive-performance claim. The website presents a synthetic demonstration. Keep it in the architecture as a research module with a non-operational status until empirical measurement, bias assessment, validation and governance review are completed.
+
+### 6.5 Networked Conflict-State Simulation
+
+**Architecture role:** A scenario simulation service for exploring probabilistic transitions among defined aggregate geographic states. It supports scenario comparison and Decision Support; it is not an operational control or targeting system.
+
+**Documented framework and demonstrator components:**
+- Dynamic weighted graph of geographic nodes.
+- Multi-state Markov transition model.
+- Neighbour-dependent conditional transition probabilities.
+- Joint state evolution and cascade analysis.
+- Monte Carlo propagation over multiple future periods.
+- Uncertainty distributions rather than a single deterministic trajectory.
+- Optional continuous attrition dynamics using a Lanchester-style model in the synthetic hybrid demonstrator.
+- Scenario comparison, sensitivity and visualized state distributions.
+
+**Maturity:** The website contains a runnable seeded synthetic scenario demonstrator, and a mathematical preprint describes the networked Markov–Monte Carlo framework. The preprint explicitly does not claim empirical performance or operational validity. Treat this as a research/simulation capability, not a validated conflict forecast.
+
+### 6.6 Shared analytical services
+
+These capabilities belong in shared infrastructure because multiple algorithms need them:
+- Graph and spatiotemporal data contracts.
+- Evidence ingestion, source provenance and reliability metadata.
+- Feature transformation and schema validation.
+- Model and algorithm registry, versioning and approval.
+- Time-aware training/validation/test splits and leakage checks.
+- Probability calibration, uncertainty and abstention interfaces.
+- Evaluation metrics, confidence intervals and benchmark records.
+- Scenario and Monte Carlo execution infrastructure.
+- Optimization and constrained search primitives.
+- Drift, feedback and model-health monitoring.
+- Reproducible runs, artifacts and audit records.
+
+Do not force every algorithm to use the same model family or scoring function. Share interfaces and operational services, not domain-specific mathematics.
+
+### 6.7 Capabilities not promoted to standalone algorithms
+
+- Dijkstra, A*, K-shortest paths and graph search are methods used within route generation and optimization; they are not separate LAPENZER products unless independently packaged and maintained.
+- Bayesian inference, logistic regression, Monte Carlo, Markov models and Lanchester-style dynamics are methods within forecasting and simulation services, not separate product modules.
+- RF-FUSE is a separate evidence/data-fusion software capability. Its canonical records, event handling, validation, signed events, duplicate/conflict controls, durable delivery, XML/XSD and compact codecs can provide integration and evidence-ingestion patterns. Connect it through an adapter or shared evidence contract; do not relabel it as a prediction algorithm.
+- AI governance and general model infrastructure are cross-cutting platform capabilities. Do not represent a planned governance product as an implemented algorithm.
+
+## 7. Decision Support module
 
 Decision Support is a first-class subsystem alongside orchestration. It converts information from agents, external systems, datasets, sensors and human operators into structured, traceable decision products.
 
@@ -390,7 +536,7 @@ Decision Support receives information from the Agent Registry, orchestration wor
 
 The policy engine governs access to evidence and decision actions. The audit service records data access, model execution, changes, approvals and decision events. Decision Support must not bypass execution permissions or device safety controls.
 
-## 7. Security, governance and safety
+## 8. Security, governance and safety
 
 Security is a cross-cutting architecture requirement.
 
@@ -432,7 +578,7 @@ Maintain append-only, tamper-evident records for:
 
 AI agents must not bypass native hardware safety controllers. Physical commands must pass through bounded device gateways and device-specific validation. Emergency-stop functions and safety interlocks must remain independent of the AI runtime. High-consequence actions require appropriate authorization and testing in a controlled environment.
 
-## 8. Data and persistence architecture
+## 9. Data and persistence architecture
 
 Proposed default components:
 
@@ -463,7 +609,7 @@ Core entities:
 
 Use transactional outbox processing, idempotent consumers, durable queues and explicit state transitions. Define retention, deletion, legal hold, data residency and backup policies per deployment profile and customer requirement. Do not store sensitive data in logs by default.
 
-## 9. Deployment profiles
+## 10. Deployment profiles
 
 The same modular core should support multiple deployment profiles.
 
@@ -494,7 +640,7 @@ The same modular core should support multiple deployment profiles.
 
 A disconnected deployment must not depend on a cloud service to authorize every local operation. Local credentials, policy freshness, revocation limits and synchronization conflicts require explicit design.
 
-## 10. API and developer ecosystem
+## 11. API and developer ecosystem
 
 Expose versioned API families:
 
@@ -543,7 +689,7 @@ SDK and tooling priorities:
 
 Third-party developers should be able to register an agent and publish a connector without modifying the orchestration core.
 
-## 11. Connector architecture
+## 12. Connector architecture
 
 Every connector is a versioned, independently packaged integration.
 
@@ -561,7 +707,7 @@ A connector manifest declares:
 
 Connector lifecycle: package → validate → register → review permissions → deploy in isolated runtime → monitor → update or revoke.
 
-## 12. Observability and operations
+## 13. Observability and operations
 
 Use correlated distributed traces, structured logs and metrics across control plane, connectors and runtimes.
 
@@ -578,7 +724,7 @@ Monitor:
 
 Provide trace IDs and execution IDs in the console and API. Redact secrets and sensitive payloads. Define service-level objectives only after workload measurement and customer requirements are known.
 
-## 13. Technology stack recommendation
+## 14. Technology stack recommendation
 
 These are replaceable defaults, not mandatory dependencies.
 
@@ -604,7 +750,7 @@ These are replaceable defaults, not mandatory dependencies.
 
 Start with a modular monolith for the control plane, clear internal module boundaries, and separately deployable workers and edge runtimes. Split services only when scale, security isolation, independent release cadence or operational ownership justifies it.
 
-## 14. Example end-to-end workflow
+## 15. Example end-to-end workflow
 
 A user asks the platform to build and verify a structure in a Minecraft environment.
 
@@ -623,7 +769,7 @@ A user asks the platform to build and verify a structure in a Minecraft environm
 
 A robotics agent may participate in a separate compatible workflow, but it requires its own device adapter, hardware-specific validation and independent safety controls. Shared orchestration does not imply that a simulated action can be transferred directly to physical hardware.
 
-## 15. Implementation roadmap
+## 16. Implementation roadmap
 
 | Phase | Deliverables | Exit criteria |
 |---|---|---|
@@ -635,7 +781,7 @@ A robotics agent may participate in a separate compatible workflow, but it requi
 | 6. Edge and physical systems | Edge runtime, ROS 2 and device adapters | Controlled hardware integration passes device-specific safety tests |
 | 7. Enterprise deployment | SaaS, dedicated, on-premises and disconnected profiles | Deployment and recovery tests pass in each supported profile |
 
-## 16. Acceptance and verification requirements
+## 17. Acceptance and verification requirements
 
 | Requirement | Verification |
 |---|---|
@@ -654,7 +800,7 @@ A robotics agent may participate in a separate compatible workflow, but it requi
 | Hardware safety | Demonstrate that AI execution cannot bypass independent safety controls |
 | Extensibility | Add a new environment through a connector without redesigning the orchestrator |
 
-## 17. Non-goals and design exclusions
+## 18. Non-goals and design exclusions
 
 - A single monolithic AI agent that performs every function.
 - Mandatory dependence on one model provider or cloud vendor.
@@ -667,24 +813,24 @@ A robotics agent may participate in a separate compatible workflow, but it requi
 - Premature decomposition into many microservices.
 - Claiming certification, operational qualification or predictive accuracy before the relevant testing has been completed.
 
-## 18. Relationship to LAPENZER NEXUS
+## 19. Relationship to LAPENZER NEXUS
 
 Agent Fabric should remain a standalone product with its own APIs, SDKs, deployment profiles and licensing model.
 
 LAPENZER NEXUS may integrate with Agent Fabric to coordinate evidence collection, research, analytical workflows, verification and Decision Support. The integration should use published APIs and capability contracts. Neither product should require the other to operate.
 
-## 19. Final architecture decision
+## 20. Final architecture decision
 
 **Product:** LAPENZER Agent Fabric (working designation)  
 **Category:** AI agent interoperability, orchestration, execution and decision-support infrastructure  
-**Core architecture:** Modular control plane + standards-based interoperability + distributed execution runtimes + first-class Decision Support  
+**Core architecture:** Modular control plane + standards-based interoperability + distributed execution runtimes + independently versioned algorithm and intelligence services + first-class Decision Support  
 **Deployment:** Shared cloud, dedicated customer environment, on-premises, disconnected and edge  
 **Integration:** Versioned APIs, SDKs and third-party connectors  
 **Governance:** Identity, capability-based authorization, policy enforcement, human approval, audit and independent hardware safety
 
 The platform's value is the operational layer connecting independently developed agents and environments. It is not another general-purpose chatbot. It is proposed infrastructure for organizations that need to coordinate, govern and observe AI-enabled work across systems they already operate.
 
-## 20. Standards and technical references
+## 21. Standards and technical references
 
 Use current versions and verify compatibility during implementation:
 - Model Context Protocol: https://modelcontextprotocol.io/
