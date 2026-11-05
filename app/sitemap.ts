@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/technology/route-prediction/simulator",
     "/technology/network-influence",
     "/technology/conflict-simulation",
+    "/technology/agent-fabric",
     "/models",
     "/models/uzuske",
     "/models/local",
@@ -32,7 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/capabilities/model-infrastructure",
   ].map((path) => ({
     url: `https://lapenzer.com${path}`,
-    lastModified: "2026-10-28",
+    lastModified: path === "/technology/agent-fabric" ? "2026-11-05" : "2026-10-28",
     changeFrequency: "monthly" as const,
     priority: path === "" ? 1 : path === "/rpa" ? 0.9 : 0.7,
   }));
