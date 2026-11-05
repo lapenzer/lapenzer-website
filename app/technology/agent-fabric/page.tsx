@@ -6,7 +6,7 @@ import { EvidencePanel } from "@/components/EvidencePanel";
 
 export const metadata: Metadata = {
   title: "LAPENZER Agent Fabric architecture",
-  description: "A proposed modular architecture for AI agent interoperability, orchestration, distributed execution and Decision Support across software and physical environments.",
+  description: "LAPENZER Agent Fabric architecture for AI agent interoperability, orchestration, route prediction, event forecasting, network analysis, simulation and Decision Support.",
 };
 
 export default function AgentFabric() {
@@ -15,7 +15,7 @@ export default function AgentFabric() {
       number="04"
       title="An interoperability layer for AI agents."
       subtitle="LAPENZER Agent Fabric"
-      description="A proposed modular platform for discovering, coordinating, governing and observing independently developed AI agents across software, cloud, simulation, edge and physical environments."
+      description="A modular architecture for coordinating AI agents and independently versioned predictive algorithms across software, cloud, simulation, edge and physical environments."
       status="Proposed reference architecture / implementation blueprint"
       sections={[
         {
@@ -37,15 +37,16 @@ export default function AgentFabric() {
           label: "Architecture layers",
           content: (
             <>
-              <h2>Five layers with cross-cutting controls.</h2>
+              <h2>Six layers with cross-cutting controls.</h2>
               <ol className="architecture-steps">
                 <li><strong>Experience</strong><span>Web console, APIs, SDKs, CLI, task monitoring and Decision Support workspaces.</span></li>
                 <li><strong>Control plane</strong><span>Agent and capability registries, orchestrator, scheduler, policy, approvals, model gateway and durable state.</span></li>
                 <li><strong>Interoperability</strong><span>MCP, A2A, REST/OpenAPI, gRPC, event messaging and device protocol adapters.</span></li>
                 <li><strong>Distributed execution</strong><span>Software, simulation, cloud, edge and robotics runtimes.</span></li>
+                <li><strong>Algorithm and intelligence services</strong><span>Route prediction, event forecasting, network influence analysis and conflict-state simulation, each independently versioned.</span></li>
                 <li><strong>Connected environments</strong><span>Browsers, desktops, business applications, databases, games, robots, sensors and industrial systems.</span></li>
               </ol>
-              <p>Security, governance, observability, data management and resilience apply across every layer. The orchestrator coordinates work but is not itself dependent on a particular language model or provider.</p>
+              <p>Security, governance, observability, data management and resilience apply across every layer. Algorithms are independent services with their own schemas, versions, evaluation records and deployment status. The orchestrator coordinates work but is not itself dependent on a particular language model or provider.</p>
               <TechnicalDetails title="Architecture flow">
                 <pre>{`Users and external systems
           |
@@ -59,10 +60,73 @@ Interoperability: MCP / A2A / REST / gRPC / Events
           |
 Execution: Software / Simulation / Cloud / Edge / Robotics
           |
+Algorithm services: Route / Event / Network / Conflict simulation
+          |
+Decision Support: Evidence / Analysis / Options / Human review
+          |
 Environments: Apps / Browsers / Games / Data / Devices
 
 Cross-cutting: Security, governance, audit, observability`}</pre>
               </TechnicalDetails>
+            </>
+          ),
+        },
+        {
+          id: "algorithm-layer",
+          label: "Algorithm and intelligence layer",
+          content: (
+            <>
+              <h2>Keep LAPENZER algorithms independent, reusable and measurable.</h2>
+              <p>The algorithm layer exposes domain-specific analytical capabilities through versioned APIs. Agent Fabric can invoke them, but the algorithms do not become agents and their mathematical logic does not belong inside the orchestration engine.</p>
+              <TechnicalDetails title="Algorithm service architecture">
+                <pre>{`Orchestrator / Decision Support / External Applications
+                         |
+                Algorithm API Gateway
+                         |
+            Algorithm and Model Registry
+                         |
+       +-----------------+------------------+
+       |                 |                  |
+ Route Prediction  Event Forecasting  Network Analysis
+       |                 |                  |
+       +---------- Shared analytical services --------+
+                  Graphs / Evidence / Features
+                  Calibration / Evaluation
+                  Simulation / Provenance
+                         |
+                  Versioned results
+                         |
+                  Decision Support`}</pre>
+              </TechnicalDetails>
+              <h3>1. Route Prediction Algorithm (RPA / UZUSKE)</h3>
+              <p><strong>Core LAPENZER predictive capability.</strong> The service models movement over dynamic directed graphs and returns ranked candidate transitions or routes, destination probabilities, uncertainty and ETA ranges.</p>
+              <ul>
+                <li>Dynamic graph construction, graph/state estimation and map matching.</li>
+                <li>Generalized resistance matrices covering distance, terrain, movement, logistics, weather, risk, interest and asset factors.</li>
+                <li>First-, second- and third-order Markov transition statistics, recency weighting and Bayesian destination inference.</li>
+                <li>Candidate generation, contextual 18-feature ranking and domain adapters for road, terrain, marine and air.</li>
+                <li>Calibration, conformal prediction, entropy, beam-search forecasting and ETA quantile simulation.</li>
+                <li>Chronological evaluation, leakage controls, candidate coverage, abstention and feedback/drift monitoring.</li>
+              </ul>
+              <p><strong>Maturity:</strong> Working Python/TypeScript prototype and website-integrated numerical implementation documented. UZUSKE 1.0 demonstrated a working next-node prediction. Broader RPA v3/v4 work includes expanded training, evaluation and API features. This is not a claim of production reliability, live-data performance or domain qualification.</p>
+              <p><Link className="text-link" href="/technology/route-prediction">Review the route prediction research and implementation ↗</Link></p>
+              <h3>2. Event Forecasting and Bayesian Cascade Model</h3>
+              <p>A separate forecasting prototype combines logistic probability estimation, Bayesian evidence updates, reliability-weighted OSINT inputs, market-implied signals, hazard modelling, consequence graphs, Monte Carlo propagation, calibration and expected-value analysis. The associated 2026 research paper describes a 16-equation framework; a prototype was previously reported as tested with six tests.</p>
+              <p><strong>Maturity:</strong> Prototype/research. Prospective forecast performance, calibration, event-resolution tracking and continuous production operation require verification. Polymarket prices are evidence inputs, not ground truth.</p>
+              <p><strong>Product boundary:</strong> The separate Quantified Systems forecasting application currently implements market-signal ingestion, user forecast submission/history, community aggregation and AI-generated decision briefs. That application should not be represented as proof that the Bayesian cascade prototype is integrated or independently generating forecasts.</p>
+              <h3>3. Aggregate Network Influence Analysis</h3>
+              <p>A theoretical framework for aggregate network-level analysis using dynamic weighted graphs, reliability-weighted evidence, historical baselines, temporal changes, probabilistic network exposure, uncertainty-aware ensembles and abstention. It is not an individual-level classification system.</p>
+              <p><strong>Maturity:</strong> Research framework with a synthetic website demonstration. No empirical accuracy, causal validity or operational predictive performance is claimed. Keep it non-operational until validated and governed.</p>
+              <p><Link className="text-link" href="/technology/network-influence">Review the network influence research ↗</Link></p>
+              <h3>4. Networked Conflict-State Simulation</h3>
+              <p>A graph-based, multi-state Markov and Monte Carlo simulation framework for exploring conditional state transitions, neighbouring effects, cascade uncertainty and scenario outcomes. A synthetic hybrid demonstrator also includes Lanchester-style continuous attrition dynamics.</p>
+              <p><strong>Maturity:</strong> Runnable seeded synthetic demonstrator and theoretical preprint. No empirical performance or operational validity is claimed.</p>
+              <p><Link className="text-link" href="/technology/conflict-simulation">Review the conflict-state simulation framework ↗</Link></p>
+              <h3>Shared services, not duplicated algorithms</h3>
+              <p>Graph and spatiotemporal data contracts, evidence provenance, feature engineering, model registry, time-aware evaluation, calibration, uncertainty, Monte Carlo execution, optimization, drift monitoring and reproducible run records should be shared infrastructure. Dijkstra, A*, Bayesian inference, logistic regression, Markov models and Monte Carlo remain methods inside their domain services, not separate product modules.</p>
+              <EvidencePanel status="Maturity is explicitly differentiated">
+                <p>Working prototype, research framework and proposed platform capability are different statuses. The architecture preserves those distinctions and does not promote synthetic demonstrations or paper-level methods into validated operational products.</p>
+              </EvidencePanel>
             </>
           ),
         },
