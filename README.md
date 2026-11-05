@@ -28,6 +28,9 @@ The original package is preserved. `lib/fixtures/network.json` supplies the 14-n
 
 ## Technology and research
 
+- `/technology/agent-fabric`: proposed universal AI agent interoperability, orchestration, distributed execution and Decision Support architecture. The full blueprint is published at `public/architecture/lapenzer-agent-fabric-blueprint.md`.
+
+
 - `/technology/route-prediction`: local evaluation build, historical aircraft prototype, and broader two-tier research design.
 - `/technology/network-influence`: aggregate influence framework with a synthetic reliability and disagreement example.
 - `/technology/conflict-simulation`: conditional probability, a synthetic network scenario, and optional continuous strength feedback.
