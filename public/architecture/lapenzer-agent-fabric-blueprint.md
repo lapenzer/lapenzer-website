@@ -1,5 +1,5 @@
-# LAPENZER Agent Fabric
-## Universal AI Interoperability, Orchestration and Decision Support Platform
+# LAPENZER Agent Fabric and Intelligence Architecture
+## Universal AI Interoperability, Orchestration, Algorithm Services and Decision Support Platform
 
 **Document type:** Architecture blueprint  
 **Status:** Proposed reference architecture; not a statement that the platform has been implemented or independently validated  
@@ -37,7 +37,7 @@ This is a target architecture and implementation plan. The components, integrati
 
 ## 3. System context and high-level architecture
 
-The system consists of five principal layers and cross-cutting controls.
+The system consists of six principal layers and cross-cutting controls.
 
 ```mermaid
 flowchart TB
@@ -70,7 +70,14 @@ flowchart TB
     EDGE["Edge Runtime"]
     ROBOT["Robotics Runtime"]
   end
-  subgraph ENV["5. CONNECTED ENVIRONMENTS"]
+  subgraph INTEL["5. ALGORITHM AND INTELLIGENCE SERVICES"]
+    ROUTE["Route Prediction"]
+    EVENT["Event Forecasting"]
+    NETWORK["Network Influence"]
+    CONFLICT["Conflict-State Simulation"]
+    SHARED["Shared Analytical Services"]
+  end
+  subgraph ENV["6. CONNECTED ENVIRONMENTS"]
     DESK["Desktop / Browser"]
     GAME["Games / Virtual Worlds"]
     SAAS["Business Applications"]
@@ -86,6 +93,9 @@ flowchart TB
   ORCH <--> STATE
   CTRL --> INTEROP
   INTEROP --> EXEC
+  EXEC <--> INTEL
+  ORCH <--> INTEL
+  INTEL -->|Evidence and model outputs| DS["Decision Support"]
   SW --> DESK
   SW --> GAME
   SW --> SAAS
@@ -95,7 +105,7 @@ flowchart TB
   SIM --> GAME
 ```
 
-Security, governance, observability, data management and operational resilience apply across every layer.
+Security, governance, observability, data management and operational resilience apply across every layer. Algorithm services are independently versioned and deployable, with explicit data contracts, model cards, evaluation records and access policies.
 
 ### 3.1 Experience layer
 
