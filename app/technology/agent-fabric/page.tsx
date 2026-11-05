@@ -1,0 +1,298 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { TechnologyPage } from "@/components/TechnologyPage";
+import { TechnicalDetails } from "@/components/TechnicalDetails";
+import { EvidencePanel } from "@/components/EvidencePanel";
+
+export const metadata: Metadata = {
+  title: "LAPENZER Agent Fabric architecture",
+  description: "A proposed modular architecture for AI agent interoperability, orchestration, distributed execution and Decision Support across software and physical environments.",
+};
+
+export default function AgentFabric() {
+  return (
+    <TechnologyPage
+      number="04"
+      title="An interoperability layer for AI agents."
+      subtitle="LAPENZER Agent Fabric"
+      description="A proposed modular platform for discovering, coordinating, governing and observing independently developed AI agents across software, cloud, simulation, edge and physical environments."
+      status="Proposed reference architecture / implementation blueprint"
+      sections={[
+        {
+          id: "overview",
+          label: "Platform overview",
+          content: (
+            <>
+              <h2>One control plane. Distributed execution.</h2>
+              <p>Agent Fabric separates coordination from execution. A central control plane manages agent identity, capability discovery, task orchestration, policy, approvals and durable state. Distributed runtimes perform work close to the software or hardware environment they control.</p>
+              <p>The platform is designed to support different AI models, programming languages, agent frameworks, cloud providers and hardware manufacturers through versioned contracts and replaceable adapters.</p>
+              <EvidencePanel status="Proposed architecture">
+                <p>This page describes a target design and implementation plan. It does not claim that the platform, connectors, certifications or operational capabilities have already been implemented or validated.</p>
+              </EvidencePanel>
+            </>
+          ),
+        },
+        {
+          id: "layers",
+          label: "Architecture layers",
+          content: (
+            <>
+              <h2>Five layers with cross-cutting controls.</h2>
+              <ol className="architecture-steps">
+                <li><strong>Experience</strong><span>Web console, APIs, SDKs, CLI, task monitoring and Decision Support workspaces.</span></li>
+                <li><strong>Control plane</strong><span>Agent and capability registries, orchestrator, scheduler, policy, approvals, model gateway and durable state.</span></li>
+                <li><strong>Interoperability</strong><span>MCP, A2A, REST/OpenAPI, gRPC, event messaging and device protocol adapters.</span></li>
+                <li><strong>Distributed execution</strong><span>Software, simulation, cloud, edge and robotics runtimes.</span></li>
+                <li><strong>Connected environments</strong><span>Browsers, desktops, business applications, databases, games, robots, sensors and industrial systems.</span></li>
+              </ol>
+              <p>Security, governance, observability, data management and resilience apply across every layer. The orchestrator coordinates work but is not itself dependent on a particular language model or provider.</p>
+              <TechnicalDetails title="Architecture flow">
+                <pre>{`Users and external systems
+          |
+Experience: Console / API / SDK / CLI
+          |
+Control plane: Identity + Registry + Orchestrator
+          |              |               |
+      Policy        Model gateway    Durable state
+          |
+Interoperability: MCP / A2A / REST / gRPC / Events
+          |
+Execution: Software / Simulation / Cloud / Edge / Robotics
+          |
+Environments: Apps / Browsers / Games / Data / Devices
+
+Cross-cutting: Security, governance, audit, observability`}</pre>
+              </TechnicalDetails>
+            </>
+          ),
+        },
+        {
+          id: "decision-support",
+          label: "Decision Support",
+          content: (
+            <>
+              <h2>Turn evidence and analysis into traceable decision products.</h2>
+              <p>Decision Support is a first-class subsystem alongside orchestration. It receives evidence and analytical outputs from agents, external systems, datasets, sensors and human operators. It helps people assess a situation, compare options, explore scenarios and document the basis for a decision.</p>
+              <ol className="architecture-steps">
+                <li><strong>Evidence ingestion</strong><span>Collect information with source identity, timestamps, context and provenance.</span></li>
+                <li><strong>Validation and normalization</strong><span>Check schemas, completeness, freshness, consistency and quality.</span></li>
+                <li><strong>Evidence fusion</strong><span>Correlate observations while preserving source-level traceability.</span></li>
+                <li><strong>Analytical engine</strong><span>Run approved statistical, mathematical, optimization and AI methods.</span></li>
+                <li><strong>Scenario analysis</strong><span>Explore alternative assumptions, conditions and possible outcomes.</span></li>
+                <li><strong>Option comparison</strong><span>Compare feasible alternatives against explicit objectives and criteria.</span></li>
+                <li><strong>Risk and uncertainty</strong><span>Assess sensitivity, robustness, evidence gaps, model disagreement and limitations.</span></li>
+                <li><strong>Explainability and review</strong><span>Show the evidence and assumptions behind findings for human assessment.</span></li>
+                <li><strong>Decision record</strong><span>Preserve the question, evidence snapshot, options, rationale, approvals and subsequent outcome.</span></li>
+              </ol>
+              <TechnicalDetails title="Decision Support processing flow">
+                <pre>{`Sources -> Ingestion -> Validation -> Evidence fusion
+       -> Analytical models <-> Scenario analysis
+       -> Option generation and comparison
+       -> Risk / sensitivity / uncertainty
+       -> Explainability and provenance
+       -> Human review and authorization
+       -> Decision record and outcome feedback`}</pre>
+              </TechnicalDetails>
+              <h3>Methods and capabilities</h3>
+              <ul>
+                <li>Multi-criteria decision analysis (MCDA).</li>
+                <li>Bayesian inference and probabilistic reasoning.</li>
+                <li>Statistical analysis and forecasting.</li>
+                <li>Optimization and resource allocation.</li>
+                <li>Scenario modelling and simulation.</li>
+                <li>Risk, sensitivity and robustness analysis.</li>
+                <li>Evidence reliability assessment and contradiction detection.</li>
+                <li>Post-decision performance evaluation.</li>
+              </ul>
+              <p>Every decision product must distinguish observed facts, derived findings, assumptions, model outputs and recommendations. A recommendation is not an established fact. Confidence values must be defined and validated for the specific use case; an AI model's self-reported confidence is not enough.</p>
+              <p>Decision Support advises and explains. Consequential decision authority remains with the designated human decision-maker unless a separately authorized automated process has explicitly been configured.</p>
+            </>
+          ),
+        },
+        {
+          id: "agents",
+          label: "Agent contract",
+          content: (
+            <>
+              <h2>Give every agent a common, versioned contract.</h2>
+              <p>Native agents publish a machine-readable identity, version, runtime, capabilities, input and output schemas, dependencies, health status and requested permissions. Third-party agents use adapters to translate their native interfaces into the platform contract.</p>
+              <p>A capability declaration describes what an agent can do. It does not grant permission. The policy engine independently authorizes each operation in context.</p>
+              <TechnicalDetails title="Illustrative agent manifest">
+                <pre>{`{
+  "agent_id": "minecraft-builder",
+  "version": "1.0.0",
+  "runtime": "simulation",
+  "capabilities": [
+    "world.inspect",
+    "structure.plan",
+    "block.place",
+    "build.verify"
+  ],
+  "permissions_requested": [
+    "world.read",
+    "world.write"
+  ],
+  "execution_limits": {
+    "max_execution_time_seconds": 300,
+    "human_approval_required": false
+  }
+}`}</pre>
+                <p>Production manifests require formal versioned schemas, signed identity metadata, dependency declarations, policy references and explicit input/output validation.</p>
+              </TechnicalDetails>
+            </>
+          ),
+        },
+        {
+          id: "interoperability",
+          label: "Interoperability",
+          content: (
+            <>
+              <h2>Use adapters and established standards.</h2>
+              <ul>
+                <li><strong>MCP:</strong> model-to-tool, resource and prompt integration.</li>
+                <li><strong>A2A:</strong> discovery and task collaboration between independent agents.</li>
+                <li><strong>REST / OpenAPI:</strong> conventional application and partner APIs.</li>
+                <li><strong>gRPC / Protobuf:</strong> typed service-to-service communication.</li>
+                <li><strong>WebSockets / SSE:</strong> live and streamed updates.</li>
+                <li><strong>MQTT:</strong> lightweight IoT messaging.</li>
+                <li><strong>ROS 2 / DDS:</strong> robotics middleware and distributed robotics communication.</li>
+                <li><strong>OPC UA:</strong> industrial interoperability and information modelling.</li>
+              </ul>
+              <p>These standards address different integration problems. Each connector must declare supported versions, authentication, capabilities, limits, error handling and conformance tests. The core orchestrator must not contain environment-specific integration logic.</p>
+            </>
+          ),
+        },
+        {
+          id: "runtimes",
+          label: "Execution runtimes",
+          content: (
+            <>
+              <h2>Run agents where the work takes place.</h2>
+              <ul>
+                <li><strong>Software runtime:</strong> browser, desktop, business applications, development tools and databases.</li>
+                <li><strong>Simulation runtime:</strong> games, Minecraft, digital twins, virtual testbeds and physics simulations.</li>
+                <li><strong>Cloud runtime:</strong> scalable workers, parallel workloads and inference.</li>
+                <li><strong>Edge runtime:</strong> local execution near devices, with event buffering and intermittent-connectivity support.</li>
+                <li><strong>Robotics runtime:</strong> ROS 2 and device-specific adapters for bounded physical command execution.</li>
+              </ul>
+              <p>Each runtime implements registration, capability declaration, authenticated task reception, execution, status reporting, event publication, artifact exchange, cancellation, error handling and health reporting.</p>
+              <p>A shared orchestration contract does not make a simulated action safe to transfer directly to physical equipment. Physical environments require device-specific validation and independent safety controls.</p>
+            </>
+          ),
+        },
+        {
+          id: "security",
+          label: "Security and governance",
+          content: (
+            <>
+              <h2>Make authorization part of every execution path.</h2>
+              <ul>
+                <li>OIDC/OAuth 2.0 and workload identities where appropriate.</li>
+                <li>RBAC, ABAC and capability-scoped permissions.</li>
+                <li>OPA or a replaceable policy evaluation interface.</li>
+                <li>Short-lived credentials, secrets management and key rotation.</li>
+                <li>Tenant isolation, network segmentation and egress controls.</li>
+                <li>OCI containers and stronger sandboxing for untrusted workloads.</li>
+                <li>Signed artifacts, software bills of materials and dependency verification.</li>
+                <li>Append-only, tamper-evident audit records.</li>
+              </ul>
+              <p>AI agents must not bypass native hardware safety controllers. Emergency-stop functions and safety interlocks remain independent of the AI runtime. High-consequence actions require appropriate authorization and controlled testing.</p>
+            </>
+          ),
+        },
+        {
+          id: "data",
+          label: "Data and infrastructure",
+          content: (
+            <>
+              <h2>Keep persistence durable and replaceable.</h2>
+              <ul>
+                <li><strong>PostgreSQL:</strong> primary relational records and task state.</li>
+                <li><strong>NATS JetStream:</strong> durable messaging and event delivery.</li>
+                <li><strong>Redis:</strong> cache and ephemeral coordination.</li>
+                <li><strong>S3-compatible storage:</strong> artifacts and evidence objects.</li>
+                <li><strong>PostGIS:</strong> optional geospatial data.</li>
+                <li><strong>pgvector:</strong> optional vector retrieval.</li>
+                <li><strong>OpenTelemetry:</strong> correlated traces, metrics and logs.</li>
+              </ul>
+              <p>Use transactional outbox processing, idempotent consumers, durable queues and explicit state transitions. Separate tenant, identity, agent, capability, task, execution, approval, event, artifact, evidence and decision records. Define retention, deletion, backup and data residency by deployment profile.</p>
+            </>
+          ),
+        },
+        {
+          id: "deployment",
+          label: "Deployment profiles",
+          content: (
+            <>
+              <h2>One architecture across different operating environments.</h2>
+              <ol className="architecture-steps">
+                <li><strong>Shared cloud SaaS</strong><span>Multi-tenant services, tenant-isolated workloads and region-aware data placement.</span></li>
+                <li><strong>Dedicated customer environment</strong><span>Dedicated services, customer-controlled keys, networks and model endpoints.</span></li>
+                <li><strong>On-premises or disconnected</strong><span>Local registry, orchestrator, policy, state, audit and optional local inference; no mandatory external connection.</span></li>
+                <li><strong>Edge deployment</strong><span>Lightweight runtimes, local validation, event buffering and controlled synchronization.</span></li>
+              </ol>
+              <p>Disconnected deployments must retain local identity, authorization and audit capabilities. Policy freshness, credential expiry, revocation limits and synchronization conflicts must be explicitly designed.</p>
+            </>
+          ),
+        },
+        {
+          id: "roadmap",
+          label: "Implementation roadmap",
+          content: (
+            <>
+              <h2>Build and verify in stages.</h2>
+              <ol className="architecture-steps">
+                <li><strong>Core foundation</strong><span>Identity, registry, capability schemas, task API and durable state. Verify a test agent can register, execute and report a verifiable result.</span></li>
+                <li><strong>Interoperability</strong><span>MCP, A2A, REST adapters and connector SDK. Verify independent agents exchange tasks and outputs.</span></li>
+                <li><strong>Multi-agent workflows</strong><span>Delegation, parallel execution, shared state and recovery. Test failure and retry behaviour.</span></li>
+                <li><strong>Software environments</strong><span>Browser, desktop and game adapters. Verify controlled interaction and acceptance criteria.</span></li>
+                <li><strong>Decision Support</strong><span>Evidence ingestion, analytical runs, option comparison, uncertainty, human review and decision records.</span></li>
+                <li><strong>Edge and physical systems</strong><span>Edge runtime, ROS 2 and device adapters. Pass device-specific safety tests.</span></li>
+                <li><strong>Enterprise deployment</strong><span>SaaS, dedicated, on-premises and disconnected profiles. Pass deployment and recovery tests.</span></li>
+              </ol>
+              <p>Start with a modular monolith for the control plane and separately deployable workers. Split services only when scale, security isolation, release cadence or operational ownership justifies it.</p>
+            </>
+          ),
+        },
+        {
+          id: "acceptance",
+          label: "Acceptance criteria",
+          content: (
+            <>
+              <h2>Require evidence before claiming readiness.</h2>
+              <ul>
+                <li>Switch model providers without changing orchestration contracts.</li>
+                <li>Run compatible agents on different hosts.</li>
+                <li>Connect independently implemented MCP and A2A agents.</li>
+                <li>Add a connector without modifying the core.</li>
+                <li>Recover interrupted tasks without corrupting committed state.</li>
+                <li>Reject unauthorized operations and expired credentials.</li>
+                <li>Demonstrate tenant isolation and reconstruct task authorization and execution from audit records.</li>
+                <li>Reproduce a decision analysis from its evidence snapshot, model version and parameters.</li>
+                <li>Demonstrate that AI execution cannot bypass independent hardware safety controls.</li>
+                <li>Deploy and recover the platform in every supported deployment profile.</li>
+              </ul>
+              <p>Certification, predictive performance, security assurance and operational suitability must be established through separate documented testing. They are not implied by this architecture.</p>
+            </>
+          ),
+        },
+        {
+          id: "nexus",
+          label: "Relationship to NEXUS",
+          content: (
+            <>
+              <h2>Two products. An integration, not a dependency.</h2>
+              <p>Agent Fabric remains a standalone product with its own APIs, SDKs, deployment profiles and licensing model. LAPENZER NEXUS may use Agent Fabric to coordinate evidence collection, research, analysis and verification agents. The integration uses published APIs and capability contracts; neither product requires the other to operate.</p>
+            </>
+          ),
+        },
+      ]}
+    >
+      <div className="article-copy">
+        <p>The complete architecture blueprint includes the system context, module responsibilities, Decision Support design, agent contract, orchestration workflow, interoperability standards, security model, data architecture, deployment profiles, API families, connector lifecycle, implementation roadmap and acceptance criteria.</p>
+        <p><Link className="text-link" href="/architecture/lapenzer-agent-fabric-blueprint.md">Read or download the complete architecture blueprint ↗</Link></p>
+        <p><Link className="text-link" href="/technology">Explore all LAPENZER technology ↗</Link></p>
+      </div>
+    </TechnologyPage>
+  );
+}
