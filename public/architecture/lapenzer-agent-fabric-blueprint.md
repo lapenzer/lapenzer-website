@@ -14,9 +14,9 @@
 
 LAPENZER Agent Fabric is a proposed modular platform for connecting, coordinating, governing and observing independently developed AI agents across software applications, cloud infrastructure, local computers, simulations, games, edge devices, robotics and industrial systems.
 
-The platform is built around a **central control plane and distributed execution environments**. The control plane manages identities, agent and capability discovery, task orchestration, policies, approvals, state and observability. Execution runtimes perform work close to the target environment. A standards-based interoperability layer connects heterogeneous agents, tools, applications and devices.
+The platform is built around a **central control plane, distributed execution environments and a separately governed algorithm and intelligence layer**. The control plane manages identities, agent and capability discovery, task orchestration, policies, approvals, state and observability. Execution runtimes perform work close to the target environment. A standards-based interoperability layer connects heterogeneous agents, tools, applications and devices. LAPENZER's existing predictive and mathematical systems are exposed as versioned algorithm services, not buried inside the orchestrator or treated as interchangeable AI agents.
 
-A first-class **Decision Support** module transforms evidence and analytical outputs into traceable decision products. It supports comparison of options, scenario analysis, uncertainty assessment and human review. It does not silently convert a model recommendation into an authorized decision.
+A first-class **Decision Support** module transforms evidence and analytical outputs from those services into traceable decision products. The algorithm layer includes route prediction, event forecasting, network influence research and networked conflict-state simulation, with explicit maturity labels so research frameworks are not represented as validated operational products. It supports comparison of options, scenario analysis, uncertainty assessment and human review. It does not silently convert a model recommendation into an authorized decision.
 
 The platform is intended to be model-independent, runtime-independent, hardware-independent and deployable as SaaS, in a customer-controlled environment, on-premises, at the edge or in a disconnected network.
 
@@ -822,7 +822,7 @@ LAPENZER NEXUS may integrate with Agent Fabric to coordinate evidence collection
 ## 20. Final architecture decision
 
 **Product:** LAPENZER Agent Fabric (working designation)  
-**Category:** AI agent interoperability, orchestration, execution and decision-support infrastructure  
+**Category:** AI agent interoperability, orchestration, algorithm services, execution and decision-support infrastructure  
 **Core architecture:** Modular control plane + standards-based interoperability + distributed execution runtimes + independently versioned algorithm and intelligence services + first-class Decision Support  
 **Deployment:** Shared cloud, dedicated customer environment, on-premises, disconnected and edge  
 **Integration:** Versioned APIs, SDKs and third-party connectors  
