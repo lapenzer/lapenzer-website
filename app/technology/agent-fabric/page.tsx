@@ -168,7 +168,7 @@ Cross-cutting: Security, governance, audit, observability`}</pre>
                 <li>Evidence reliability assessment and contradiction detection.</li>
                 <li>Post-decision performance evaluation.</li>
               </ul>
-              <p>Every decision product must distinguish observed facts, derived findings, assumptions, model outputs and recommendations. A recommendation is not an established fact. Confidence values must be defined and validated for the specific use case; an AI model's self-reported confidence is not enough.</p>
+              <p>Every decision product must distinguish observed facts, derived findings, assumptions, model outputs and recommendations. A recommendation is not an established fact. Confidence values must be defined and validated for the specific use case; an AI model&apos;s self-reported confidence is not enough.</p>
               <p>Decision Support advises and explains. Consequential decision authority remains with the designated human decision-maker unless a separately authorized automated process has explicitly been configured.</p>
             </>
           ),
