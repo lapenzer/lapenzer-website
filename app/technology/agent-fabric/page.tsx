@@ -49,7 +49,7 @@ export default function AgentFabric() {
               </ol>
               <p>Security, governance, observability, data management and resilience apply across every layer. Algorithms are independent services with their own schemas, versions, evaluation records and deployment status. The orchestrator coordinates work but is not itself dependent on a particular language model or provider.</p>
               <p>Information flows in both directions: runtimes publish observations, status and artifacts; the control plane dispatches authorized tasks; analytical services return findings and uncertainty; and Decision Support packages evidence and options for human review. The connected environment never receives unrestricted authority merely because an agent is registered.</p>
-              <TechnicalDetails title="Architecture flow">
+              <TechnicalDetails title="Architecture flow" open>
                 <pre>{`Users and external systems
           |
 Experience: Console / API / SDK / CLI
@@ -80,7 +80,7 @@ Cross-cutting: Security, governance, audit, observability`}</pre>
             <>
               <h2>Keep LAPENZER algorithms independent, reusable and measurable.</h2>
               <p>The algorithm layer exposes domain-specific analytical capabilities through versioned APIs. Agent Fabric can invoke them, but the algorithms do not become agents and their mathematical logic does not belong inside the orchestration engine.</p>
-              <TechnicalDetails title="Algorithm service architecture">
+              <TechnicalDetails title="Algorithm service architecture" open>
                 <pre>{`Orchestrator / Decision Support / External Applications
                          |
                 Algorithm API Gateway
@@ -150,7 +150,7 @@ Cross-cutting: Security, governance, audit, observability`}</pre>
                 <li><strong>Explainability and review</strong><span>Show the evidence and assumptions behind findings for human assessment.</span></li>
                 <li><strong>Decision record</strong><span>Preserve the question, evidence snapshot, options, rationale, approvals and subsequent outcome.</span></li>
               </ol>
-              <TechnicalDetails title="Decision Support processing flow">
+              <TechnicalDetails title="Decision Support processing flow" open>
                 <pre>{`Sources -> Ingestion -> Validation -> Evidence fusion
        -> Analytical models <-> Scenario analysis
        -> Option generation and comparison
@@ -385,7 +385,7 @@ GET    /v1/executions/{execution_id}/events`}</pre>
               <h2>Make integrations independently installable and replaceable.</h2>
               <p>Every connector is a versioned package that translates a target system's native interface into the platform's common agent, capability, event and artifact contracts. Connector-specific logic stays outside the orchestrator.</p>
               <p>A connector manifest records its identity, owner, version, target system, protocol, capabilities, input/output schemas, authentication method, requested permissions, network destinations, resource limits, data handling, dependencies, compatibility, health checks and security provenance.</p>
-              <TechnicalDetails title="Connector lifecycle">
+              <TechnicalDetails title="Connector lifecycle" open>
                 <pre>{`Package
   -> Validate manifest, schemas, signatures and dependencies
   -> Register connector and declared capabilities
