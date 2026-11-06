@@ -416,7 +416,6 @@ Do not force every algorithm to use the same model family or scoring function. S
 
 - Dijkstra, A*, K-shortest paths and graph search are methods used within route generation and optimization; they are not separate LAPENZER products unless independently packaged and maintained.
 - Bayesian inference, logistic regression, Monte Carlo, Markov models and Lanchester-style dynamics are methods within forecasting and simulation services, not separate product modules.
-- RF-FUSE is a separate evidence/data-fusion software capability. Its canonical records, event handling, validation, signed events, duplicate/conflict controls, durable delivery, XML/XSD and compact codecs can provide integration and evidence-ingestion patterns. Connect it through an adapter or shared evidence contract; do not relabel it as a prediction algorithm.
 - AI governance and general model infrastructure are cross-cutting platform capabilities. Do not represent a planned governance product as an implemented algorithm.
 
 ## 7. Decision Support module
