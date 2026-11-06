@@ -25,7 +25,8 @@ export default function AgentFabric() {
             <>
               <h2>One control plane. Distributed execution.</h2>
               <p>Agent Fabric separates coordination from execution. A central control plane manages agent identity, capability discovery, task orchestration, policy, approvals and durable state. Distributed runtimes perform work close to the software or hardware environment they control.</p>
-              <p>The platform is designed to support different AI models, programming languages, agent frameworks, cloud providers and hardware manufacturers through versioned contracts and replaceable adapters.</p>
+              <p>The platform is designed to support different AI models, programming languages, agent frameworks, cloud providers and hardware manufacturers through versioned contracts and replaceable adapters. It separates control-plane decisions from worker execution, and keeps algorithm services, decision records and environment-specific connectors independently deployable.</p>
+              <p>The architecture has three operating boundaries: a trusted control plane that authenticates and authorizes work; isolated execution runtimes that interact with software or devices; and governed analytical services that return versioned outputs with provenance and uncertainty. Data and actions cross these boundaries only through declared contracts.</p>
               <EvidencePanel status="Proposed architecture">
                 <p>This page describes a target design and implementation plan. It does not claim that the platform, connectors, certifications or operational capabilities have already been implemented or validated.</p>
               </EvidencePanel>
@@ -47,6 +48,7 @@ export default function AgentFabric() {
                 <li><strong>Connected environments</strong><span>Browsers, desktops, business applications, databases, games, robots, sensors and industrial systems.</span></li>
               </ol>
               <p>Security, governance, observability, data management and resilience apply across every layer. Algorithms are independent services with their own schemas, versions, evaluation records and deployment status. The orchestrator coordinates work but is not itself dependent on a particular language model or provider.</p>
+              <p>Information flows in both directions: runtimes publish observations, status and artifacts; the control plane dispatches authorized tasks; analytical services return findings and uncertainty; and Decision Support packages evidence and options for human review. The connected environment never receives unrestricted authority merely because an agent is registered.</p>
               <TechnicalDetails title="Architecture flow">
                 <pre>{`Users and external systems
           |
@@ -337,6 +339,127 @@ Cross-cutting: Security, governance, audit, observability`}</pre>
                 <li>Deploy and recover the platform in every supported deployment profile.</li>
               </ul>
               <p>Certification, predictive performance, security assurance and operational suitability must be established through separate documented testing. They are not implied by this architecture.</p>
+            </>
+          ),
+        },
+        {
+          id: "api",
+          label: "API and developer platform",
+          content: (
+            <>
+              <h2>Expose every major platform capability through versioned interfaces.</h2>
+              <p>The public API is the stable boundary between the control plane, customer applications, developer tools and independently deployed services. Use OpenAPI for HTTP contracts and gRPC with Protobuf for typed internal service communication where streaming or strict schemas are useful. Version APIs explicitly and maintain backward-compatibility rules.</p>
+              <ul>
+                <li><strong>Agent API:</strong> register, update, discover, inspect and deactivate agents.</li>
+                <li><strong>Capability API:</strong> publish capability manifests, retrieve schemas and validate requested operations.</li>
+                <li><strong>Task and workflow APIs:</strong> submit, inspect, cancel, pause, resume, delegate and coordinate work.</li>
+                <li><strong>Execution API:</strong> start and monitor runtime jobs, retrieve status and stream execution events.</li>
+                <li><strong>Connector API:</strong> install, configure, test, upgrade, disable and revoke integrations.</li>
+                <li><strong>Policy API:</strong> evaluate authorization requests and retrieve policy decision metadata.</li>
+                <li><strong>Artifact and event APIs:</strong> exchange signed artifacts and publish or subscribe to durable events.</li>
+                <li><strong>Decision API:</strong> create decision questions, initiate analyses, compare options, request review and preserve decisions.</li>
+              </ul>
+              <TechnicalDetails title="Illustrative API surface">
+                <pre>{`POST   /v1/agents
+GET    /v1/agents/{agent_id}/capabilities
+POST   /v1/tasks
+GET    /v1/tasks/{task_id}
+POST   /v1/tasks/{task_id}/cancel
+POST   /v1/workflows
+POST   /v1/connectors
+POST   /v1/policies/evaluate
+POST   /v1/decisions
+POST   /v1/decisions/{decision_id}/analyses
+POST   /v1/decisions/{decision_id}/review
+GET    /v1/executions/{execution_id}/events`}</pre>
+              </TechnicalDetails>
+              <p>Developer deliverables should include Python and TypeScript SDKs, a command-line interface, an agent development kit, connector development kit and runtime development kit. A third party should be able to add an agent or connector without modifying the orchestration core.</p>
+            </>
+          ),
+        },
+        {
+          id: "connectors",
+          label: "Connector lifecycle",
+          content: (
+            <>
+              <h2>Make integrations independently installable and replaceable.</h2>
+              <p>Every connector is a versioned package that translates a target system's native interface into the platform's common agent, capability, event and artifact contracts. Connector-specific logic stays outside the orchestrator.</p>
+              <p>A connector manifest records its identity, owner, version, target system, protocol, capabilities, input/output schemas, authentication method, requested permissions, network destinations, resource limits, data handling, dependencies, compatibility, health checks and security provenance.</p>
+              <TechnicalDetails title="Connector lifecycle">
+                <pre>{`Package
+  -> Validate manifest, schemas, signatures and dependencies
+  -> Register connector and declared capabilities
+  -> Review requested permissions and network access
+  -> Deploy in an isolated runtime
+  -> Run conformance and health tests
+  -> Monitor errors, latency, resource use and policy decisions
+  -> Upgrade, disable or revoke`}</pre>
+              </TechnicalDetails>
+              <p>Connector failure must not corrupt task state. Retries must be bounded and idempotent where possible. Revocation must prevent new work and define how in-flight tasks are safely cancelled or completed.</p>
+            </>
+          ),
+        },
+        {
+          id: "operations",
+          label: "Observability and operations",
+          content: (
+            <>
+              <h2>Make every task traceable from request to verified result.</h2>
+              <p>Use correlated distributed traces, structured logs and metrics across the control plane, connectors, algorithm services and execution runtimes. A task identifier and trace identifier should follow work across service boundaries.</p>
+              <ul>
+                <li>Task acceptance, completion, latency, retries and failure rates.</li>
+                <li>Agent availability, health and capability changes.</li>
+                <li>Queue depth, scheduling delay and worker utilization.</li>
+                <li>Model-provider latency, errors, token use and fallback behaviour.</li>
+                <li>Connector health, protocol errors and conformance status.</li>
+                <li>Authorization denials, approval delays and policy changes.</li>
+                <li>Decision analysis execution, evidence freshness and model versions.</li>
+                <li>Audit pipeline integrity, storage health and recovery status.</li>
+              </ul>
+              <p>Redact secrets and sensitive payloads from telemetry by default. Retention, access and data residency are deployment-specific. Define service-level objectives only after representative workload measurement.</p>
+            </>
+          ),
+        },
+        {
+          id: "workflow-example",
+          label: "Example workflow",
+          content: (
+            <>
+              <h2>Coordinate agents in a virtual environment.</h2>
+              <p>For example, a user asks an agent team to build and verify a structure in a Minecraft world. The same orchestration contract can coordinate planning, execution and verification agents while the simulation adapter handles game-specific actions.</p>
+              <ol className="architecture-steps">
+                <li><strong>Submit objective</strong><span>The console or API creates a task with scope and acceptance criteria.</span></li>
+                <li><strong>Discover capabilities</strong><span>The registry identifies agents that can inspect, plan, build and verify.</span></li>
+                <li><strong>Authorize</strong><span>The policy engine evaluates identities, requested permissions and environment boundaries.</span></li>
+                <li><strong>Plan and delegate</strong><span>The orchestrator creates a workflow and assigns bounded tasks.</span></li>
+                <li><strong>Execute</strong><span>The simulation runtime invokes the game connector to carry out approved actions.</span></li>
+                <li><strong>Verify</strong><span>An independent agent inspects the resulting world state against acceptance criteria.</span></li>
+                <li><strong>Recover or complete</strong><span>Failed steps are retried, corrected or escalated; verified artifacts and task records are retained.</span></li>
+              </ol>
+              <p>A robotics workflow uses the same high-level orchestration pattern but requires a separate device adapter, device-specific validation and independent hardware safety controls. A simulated action is never assumed safe for physical execution.</p>
+            </>
+          ),
+        },
+        {
+          id: "technology-stack",
+          label: "Technology choices",
+          content: (
+            <>
+              <h2>Choose replaceable technologies around stable contracts.</h2>
+              <p>The following stack is a practical starting point, not a fixed dependency or a claim that these components are already deployed.</p>
+              <ul>
+                <li><strong>Web console:</strong> React and TypeScript.</li>
+                <li><strong>Control-plane API:</strong> Python and FastAPI.</li>
+                <li><strong>Specialized gateways:</strong> Go or Rust when profiling justifies them.</li>
+                <li><strong>Contracts:</strong> OpenAPI, JSON Schema, Protobuf and AsyncAPI where appropriate.</li>
+                <li><strong>Primary data:</strong> PostgreSQL, with PostGIS for geospatial workloads.</li>
+                <li><strong>Durable messaging:</strong> NATS JetStream; Redis for cache and ephemeral coordination.</li>
+                <li><strong>Artifacts:</strong> S3-compatible object storage.</li>
+                <li><strong>Policy:</strong> Open Policy Agent behind a replaceable policy interface.</li>
+                <li><strong>Observability:</strong> OpenTelemetry-compatible traces, metrics and logs.</li>
+                <li><strong>Packaging:</strong> OCI containers; Kubernetes only where deployment scale requires it.</li>
+              </ul>
+              <p>Begin with a modular monolith for the control plane, strict internal module boundaries and separately deployable workers. Split services when measured scale, security isolation, independent release cadence or operational ownership makes that separation worthwhile. This avoids premature microservice complexity.</p>
             </>
           ),
         },
