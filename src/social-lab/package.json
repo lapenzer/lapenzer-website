@@ -1,0 +1,29 @@
+{
+  "name": "lapenzer-social-network-laboratory",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "node --import tsx --test src/tests/*.test.ts",
+    "build:engine": "esbuild src/server/experiment-runner.ts --bundle --platform=node --format=esm --outfile=build/experiment-runner.mjs"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "cytoscape": "^3.32.0",
+    "plotly.js-basic-dist-min": "^3.0.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/cytoscape": "^3.21.9",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.1.0",
+    "@vitejs/plugin-react": "^4.4.0",
+    "tsx": "^4.19.0"
+  }
+}

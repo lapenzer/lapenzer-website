@@ -18,7 +18,10 @@
     "rpa:assemble": "node scripts/assemble-rpa-v4.mjs",
     "predev": "npm run rpa:assemble",
     "prelint": "npm run rpa:assemble",
-    "prebuild": "npm run rpa:assemble"
+    "prebuild": "npm run rpa:assemble && npm run lab:build",
+    "lab:build": "node scripts/build-social-lab.mjs",
+    "lab:test": "npm --prefix src/social-lab test",
+    "prebuild:preview": "npm run lab:build"
   },
   "dependencies": {
     "framer-motion": "^12.23.24",

@@ -504,3 +504,5 @@ td { color:#737a83; }
   .terminal-bar{font-size:8px}
   .terminal-body{font-size:10px}
 }
+
+.site-nav:not(.light) .wordmark img { filter: invert(1); }

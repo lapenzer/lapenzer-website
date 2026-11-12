@@ -59,3 +59,11 @@ This explicitly opts into static export under `out/`. The default production bui
 ## Interaction and access
 
 Homepage model stories retain static explanations before hydration, provide direct stage controls, and collapse sticky behavior for narrow screens and reduced-motion preferences. The mobile menu supports Escape, focus cycling, and expanded-state announcements. Contact opens an email draft; sending happens in the visitor's email app.
+
+## Social Network Laboratory
+
+The homepage includes the complete LAPENZER Social Network Laboratory at `/#social-network-lab`; the standalone browser workspace runs at `/social-lab/index.html`. All code, workers, assets and source downloads are served from lapenzer.com. No external account is required.
+
+The isolated application source is in `src/social-lab/`. `npm run lab:build` installs its locked dependencies, builds it, packages its reusable source, and prepares `public/social-lab/`. This runs automatically before the normal production build and static preview build. Existing route-prediction and research pages retain their routes.
+
+Core simulations execute in a dedicated browser worker and persist on the visitor's device. The downloadable full-stack server is optional; it is not deployed inside the public company website. Run `npm run lab:test` after the lab dependencies have been installed. Model assumptions and limits are documented in `src/social-lab/MODEL.md`.

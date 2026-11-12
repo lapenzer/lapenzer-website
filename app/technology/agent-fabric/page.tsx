@@ -383,7 +383,7 @@ GET    /v1/executions/{execution_id}/events`}</pre>
           content: (
             <>
               <h2>Make integrations independently installable and replaceable.</h2>
-              <p>Every connector is a versioned package that translates a target system's native interface into the platform's common agent, capability, event and artifact contracts. Connector-specific logic stays outside the orchestrator.</p>
+              <p>Every connector is a versioned package that translates a target system&apos;s native interface into the platform&apos;s common agent, capability, event and artifact contracts. Connector-specific logic stays outside the orchestrator.</p>
               <p>A connector manifest records its identity, owner, version, target system, protocol, capabilities, input/output schemas, authentication method, requested permissions, network destinations, resource limits, data handling, dependencies, compatibility, health checks and security provenance.</p>
               <TechnicalDetails title="Connector lifecycle" open>
                 <pre>{`Package

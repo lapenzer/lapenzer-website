@@ -5,6 +5,7 @@ import { research } from "@/lib/research";
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     "",
+    "/social-lab/index.html",
     "/rpa",
     "/technology",
     "/technology/route-prediction",

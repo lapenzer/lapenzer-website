@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      AISNL_DATABASE_URL: postgresql+psycopg://aisnl:local-research@db:5432/aisnl
+      AISNL_ENABLE_LLM: "0"
+      OLLAMA_URL: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: aisnl
+      POSTGRES_PASSWORD: local-research
+      POSTGRES_DB: aisnl
+    volumes:
+      - aisnl-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aisnl"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+volumes:
+  aisnl-db:
