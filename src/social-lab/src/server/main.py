@@ -371,6 +371,8 @@ def report(payload: dict[str, Any]):
 def frontend(path: str):
     if path.startswith('api/'):
         raise HTTPException(404, 'Unknown API route.')
+    if path.startswith('social-lab/'):
+        path = path[len('social-lab/'):]
     candidate = (DIST / path).resolve()
     if not candidate.is_relative_to(DIST.resolve()):
         raise HTTPException(404)

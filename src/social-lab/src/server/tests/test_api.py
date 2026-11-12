@@ -82,3 +82,15 @@ def test_no_credentials_or_inference_needed_for_core_and_pdf(client):
     assert report.status_code == 200
     assert report.content.startswith(b'%PDF-')
     assert client.get('/api/nonexistent').status_code == 404
+
+
+def test_browser_assets_use_the_same_mount_locally_and_on_the_public_site(client, tmp_path, monkeypatch):
+    import src.server.main as server
+    (tmp_path / 'assets').mkdir()
+    (tmp_path / 'index.html').write_text('<html><body>Laboratory</body></html>')
+    (tmp_path / 'assets' / 'fixture.js').write_text('console.log("laboratory");')
+    monkeypatch.setattr(server, 'DIST', tmp_path)
+    response = client.get('/social-lab/assets/fixture.js')
+    assert response.status_code == 200
+    assert response.text == 'console.log("laboratory");'
+    assert 'javascript' in response.headers['content-type']
