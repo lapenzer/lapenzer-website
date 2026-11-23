@@ -105,10 +105,13 @@ export function RPADashboard() {
   }, []);
 
   useEffect(() => {
-    try {
-      const entries = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
-      if (Array.isArray(entries)) setSavedRuns(entries.slice(0, 8));
-    } catch { setSavedRuns([]); }
+    const id = window.setTimeout(() => {
+      try {
+        const entries = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
+        if (Array.isArray(entries)) setSavedRuns(entries.slice(0, 8));
+      } catch { setSavedRuns([]); }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   const resetRun = useCallback(() => {
