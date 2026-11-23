@@ -6,6 +6,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     "",
     "/social-lab/index.html",
+    "/laboratory",
+    "/solutions/geomatch",
     "/rpa",
     "/technology",
     "/technology/route-prediction",
