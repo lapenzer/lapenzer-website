@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-const links = [["Solutions", "/solutions"], ["Technology", "/technology"], ["Research", "/research"], ["Laboratory", "/laboratory"], ["Company", "/company"], ["Photography", "/photography"]];
+const links = [["Solutions", "/solutions"], ["Technology", "/technology"], ["Research", "/research"], ["Laboratory", "/laboratory"], ["Company", "/company"]];
 export function Header() {
   const [open, setOpen] = useState(false);
   const path = usePathname(), menu = useRef<HTMLElement>(null), toggle = useRef<HTMLButtonElement>(null);

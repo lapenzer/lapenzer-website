@@ -9,7 +9,7 @@ body{background:var(--paper);color:var(--ink)}
 .site-nav .nav-cta{color:var(--ink);border-radius:0;white-space:nowrap}
 .site-nav .nav-cta:hover{background:var(--ink);color:var(--paper)}
 .site-nav .wordmark img{filter:none}
-.display,.display-small,.h2,.h3,.page-hero h1,.editorial-heading h2,.research-article h2,.article-copy h2,.docs-main h1,.ed-hero h1,.ed-section-head h2,.ed-card h3,.ed-method h3,.ed-article h3,.ed-resource h2,.ed-resource h3,.ed-model h2,.ed-model-result strong,.editorial-photography h1{font-family:Georgia,"Times New Roman",serif;font-weight:500;letter-spacing:-.045em}
+.display,.display-small,.h2,.h3,.page-hero h1,.editorial-heading h2,.research-article h2,.article-copy h2,.docs-main h1,.ed-hero h1,.ed-section-head h2,.ed-card h3,.ed-method h3,.ed-article h3,.ed-resource h2,.ed-resource h3,.ed-model h2,.ed-model-result strong{font-family:Georgia,"Times New Roman",serif;font-weight:500;letter-spacing:-.045em}
 .eyebrow,.ed-kicker,.ed-meta,.ed-card-meta,.ed-model-top,.ed-model-result>span,.ed-archive-count,.ed-filters button,.ed-article-bottom,.ed-method-grid article>span{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.085em}
 .btn{border-radius:0}
 .btn-dark{background:var(--signal-dark);border-color:var(--signal-dark);color:white}
@@ -82,8 +82,6 @@ body{background:var(--paper);color:var(--ink)}
 .ed-contact{padding-block:65px;background:var(--night);color:var(--paper)}
 .ed-contact .ed-section-head{margin-bottom:0;align-items:center}
 .ed-contact .ed-primary{margin-top:20px}
-.editorial-photography{background:var(--paper)!important}
-.editorial-photography>section:first-child{background:var(--night)!important}
 a:focus-visible,button:focus-visible{outline:2px solid var(--signal-dark);outline-offset:4px}
 .ed-method a:focus-visible,.ed-contact a:focus-visible,.footer a:focus-visible{outline-color:var(--aqua)}
 @media(max-width:1100px){.site-nav .nav-links{gap:13px}.site-nav .nav-inner{gap:15px}.ed-hero{gap:40px}}

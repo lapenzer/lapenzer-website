@@ -23,7 +23,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/research",
     ...research.map((p) => `/research/${p.slug}`),
     "/company",
-    "/photography",
     "/contact",
     "/contact/sales",
     "/developers",
@@ -39,7 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/capabilities/model-infrastructure",
   ].map((path) => ({
     url: `https://lapenzer.com${path}`,
-    lastModified: path === "/photography" ? "2026-11-25" : path === "/technology/agent-fabric" ? "2026-11-05" : "2026-10-28",
+    lastModified: path === "/technology/agent-fabric" ? "2026-11-05" : "2026-10-28",
     changeFrequency: "monthly" as const,
     priority: path === "" ? 1 : path === "/rpa" ? 0.9 : 0.7,
   }));
