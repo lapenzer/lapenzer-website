@@ -506,3 +506,9 @@ td { color:#737a83; }
 }
 
 .site-nav:not(.light) .wordmark img { filter: invert(1); }
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .site-nav .nav-inner { gap: 16px; }
+  .site-nav .nav-links { gap: 12px; }
+  .site-nav .nav-cta { white-space: nowrap; }
+}
