@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./editorial.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 export const metadata: Metadata = { metadataBase: new URL("https://lapenzer.com"), title: { default: "LAPENZER | Custom Software & Predictive Intelligence", template: "%s | LAPENZER" }, description: "Custom software, predictive analysis, GeoMatch geographic matching and evidence-based decision support.", openGraph: { title: "LAPENZER", description: "Explore the LAPENZER Social Network Laboratory, route prediction software and mathematical network research.", url: "https://lapenzer.com", siteName: "LAPENZER", type: "website" }, twitter: { card: "summary_large_image", title: "LAPENZER", description: "Mathematical software, network models, simulation research and AI interoperability systems." } };

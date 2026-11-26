@@ -118,7 +118,7 @@ export const metadata: Metadata = {
 
 export default function Photography() {
   const portraits = portraitPhotographs.filter(photo => existsSync(join(process.cwd(), "public", photo.src.slice(1))));
-  return <div className="bg-[#f2f0ea] text-[#0c0d0e]">
+  return <div className="editorial-photography bg-[#f2f0ea] text-[#0c0d0e]">
     <section className="bg-[#151719] text-white pt-32 pb-16 md:pt-40 md:pb-24">
       <div className="shell">
         <div className="flex flex-wrap justify-between gap-4 border-b border-white/25 pb-5">
