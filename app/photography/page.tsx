@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 const photographs = [
   {
@@ -36,6 +38,72 @@ const photographs = [
     "height": 716
   }
 ];
+const portraitPhotographs = [
+  {
+    "title": "Night portrait",
+    "alt": "Over-the-shoulder portrait in a red jacket at night",
+    "description": "Modelling and portraits",
+    "src": "/photography/night-portrait.webp",
+    "width": 1066,
+    "height": 1600
+  },
+  {
+    "title": "City lights",
+    "alt": "Portrait with blurred city lights in the background",
+    "description": "Modelling and portraits",
+    "src": "/photography/city-lights.webp",
+    "width": 1600,
+    "height": 1066
+  },
+  {
+    "title": "Daylight portrait",
+    "alt": "Outdoor portrait with soft daylight and a blurred garden backdrop",
+    "description": "Modelling and portraits",
+    "src": "/photography/daylight-portrait.webp",
+    "width": 1600,
+    "height": 1066
+  },
+  {
+    "title": "Blossom study",
+    "alt": "Outdoor portrait beside white spring blossoms",
+    "description": "Modelling and portraits",
+    "src": "/photography/blossom-study.webp",
+    "width": 1600,
+    "height": 1066
+  },
+  {
+    "title": "Waterfront portrait",
+    "alt": "Portrait seated beside a tree and waterfront",
+    "description": "Modelling and portraits",
+    "src": "/photography/waterfront-portrait.webp",
+    "width": 1600,
+    "height": 1066
+  },
+  {
+    "title": "Window study",
+    "alt": "Portrait with striped scarf beside a window",
+    "description": "Editorial portraits",
+    "src": "/photography/window-study.webp",
+    "width": 1066,
+    "height": 1600
+  },
+  {
+    "title": "Silhouette study",
+    "alt": "Black-and-white backlit portrait in a public interior",
+    "description": "Editorial portraits",
+    "src": "/photography/silhouette-study.webp",
+    "width": 1600,
+    "height": 1066
+  },
+  {
+    "title": "Street style",
+    "alt": "Fashion portrait against a vine-covered stone wall",
+    "description": "Editorial portraits",
+    "src": "/photography/street-style.webp",
+    "width": 1600,
+    "height": 1066
+  }
+];
 const email = "lapenzerparikh@gmail.com";
 const inquiries = [
   { title: "Modelling & portraits", description: "For models, aspiring models, agencies and creatives interested in portfolio development, editorial portraits or collaborative shoots.", subject: "Photography inquiry: Modelling", body: "Hello LAPENZER Photography,\n\nName:\nLocation:\nType of shoot or collaboration:\nPreferred dates:\nPortfolio or reference links:\n\nThank you." },
@@ -49,6 +117,7 @@ export const metadata: Metadata = {
 };
 
 export default function Photography() {
+  const portraits = portraitPhotographs.filter(photo => existsSync(join(process.cwd(), "public", photo.src.slice(1))));
   return <div className="bg-[#f2f0ea] text-[#0c0d0e]">
     <section className="bg-[#151719] text-white pt-32 pb-16 md:pt-40 md:pb-24">
       <div className="shell">
@@ -68,8 +137,24 @@ export default function Photography() {
     <section id="selected-work" className="shell py-16 md:py-24 scroll-mt-24">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-black/15 pb-6 mb-9">
         <div><p className="eyebrow mb-4">01 / Portfolio</p><h2 className="h2">Selected work.</h2></div>
-        <p className="text-sm text-black/60">Four original photographs</p>
+        <p className="text-sm text-black/60">{photographs.length + portraits.length} original photographs</p>
       </div>
+      {portraits.length > 0 && <div className="mb-16">
+        <h3 className="h3 mb-6">Modelling & editorial portraits.</h3>
+        <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+          {portraits.map(photo => <figure key={photo.src} className="min-w-0">
+            <a href={photo.src} target="_blank" rel="noreferrer" aria-label={`Open photograph: ${photo.title}`} className="block bg-[#e8e5de]">
+              <Image src={photo.src} alt={photo.alt} width={photo.width} height={photo.height} unoptimized className="block w-full aspect-[4/5] object-cover" />
+            </a>
+            <figcaption className="border-t border-black/15 mt-3 pt-3">
+              <h4 className="text-xl font-medium">{photo.title}</h4>
+              <p className="text-sm text-black/70 mt-1">{photo.description}</p>
+            </figcaption>
+          </figure>)}
+        </div>
+        <a href="#photography-contact" className="btn btn-dark mt-8">Inquire about a portrait session ↗</a>
+      </div>}
+      {portraits.length > 0 && <h3 className="h3 mb-6">Places, lifestyle & motion.</h3>}
       <div className="grid gap-x-8 gap-y-12 md:grid-cols-2">
         {photographs.map((photo, index) => <figure key={photo.title} className="min-w-0">
           <a href={photo.src} target="_blank" rel="noreferrer" aria-label={`Open photograph: ${photo.title}`} className="block bg-[#e8e5de]">
